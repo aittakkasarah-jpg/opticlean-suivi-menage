@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Suivi ménage – OptiClean</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #f2efeb;
+  --dark: #1f3b44;
+  --accent: #8fd3c7;
+  --accent-dark: #4a9c8c;
+  --white: #ffffff;
+  --gray: #6b7280;
+  --border: #d4cfc9;
+  --warn: #c0392b;
+  --warn-bg: #fdecea;
+  --ok-bg: #eaf7f2;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); font-size: 13px; line-height: 1.5; }
+
+/* BARRE DU HAUT */
+.toolbar {
+  position: sticky; top: 0; z-index: 200;
+  background: var(--dark); color: var(--white);
+  padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+}
+.brand { display: flex; align-items: baseline; gap: 10px; }
+.brand strong { font-size: 17px; font-weight: 700; }
+.brand span { font-size: 12px; color: rgba(255,255,255,0.65); }
+
+.mois-nav { display: flex; align-items: center; gap: 10px; }
+.mois-nav button { background: rgba(255,255,255,0.1); border: none; color: var(--white); width: 30px; height: 30px; border-radius: 6px; cursor: pointer; font-size: 15px; }
+.mois-nav button:hover { background: rgba(255,255,255,0.2); }
+.mois-nav .mois-label { font-weight: 600; font-size: 14px; min-width: 150px; text-align: center; text-transform: capitalize; }
+
+.toolbar-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  padding: 8px 14px; border: none; border-radius: 6px;
+  font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.btn:hover { opacity: 0.88; }
+.btn:active { transform: scale(0.97); }
+.btn-accent { background: var(--accent); color: var(--dark); }
+.btn-ghost { background: rgba(255,255,255,0.1); color: var(--white); }
+.btn-ghost:hover { background: rgba(255,255,255,0.2); }
+.btn-outline { background: transparent; color: var(--dark); border: 1.5px solid var(--border); }
+.btn-outline:hover { background: var(--bg); }
+.btn-danger { background: transparent; color: var(--warn); }
+.btn-danger:hover { background: var(--warn-bg); }
+input[type=file] { display: none; }
+
+/* CONTENU */
+.contenu { padding: 22px 28px 60px; max-width: 100%; }
+
+.bandeau-vide {
+  background: var(--white); border: 1.5px dashed var(--border); border-radius: 10px;
+  padding: 40px; text-align: center; color: var(--gray);
+}
+.bandeau-vide p { margin-bottom: 14px; }
+
+.avertissement {
+  background: var(--white); border-left: 3px solid var(--accent); border-radius: 8px;
+  padding: 10px 16px; margin-bottom: 18px; font-size: 12px; color: var(--gray);
+}
+.avertissement strong { color: var(--dark); }
+
+/* TABLEAU PRINCIPAL */
+.table-wrap { background: var(--white); border-radius: 10px; overflow: auto; box-shadow: 0 2px 20px rgba(31,59,68,0.06); margin-bottom: 24px; }
+table.suivi { border-collapse: collapse; font-size: 12px; min-width: 100%; }
+table.suivi th, table.suivi td { border: 1px solid var(--border); padding: 0; }
+table.suivi thead th {
+  background: var(--dark); color: var(--white); font-weight: 600; font-size: 10.5px;
+  padding: 8px 6px; text-align: center; white-space: nowrap; position: sticky; top: 0; z-index: 5;
+}
+table.suivi thead th.col-local { text-align: left; position: sticky; left: 0; z-index: 6; min-width: 190px; }
+table.suivi tbody th.col-local {
+  position: sticky; left: 0; background: var(--white); z-index: 3; text-align: left;
+  padding: 10px 12px; min-width: 190px; border-right: 2px solid var(--border);
+}
+table.suivi tbody tr:nth-child(even) th.col-local,
+table.suivi tbody tr:nth-child(even) td { background: #faf9f7; }
+
+.local-nom { font-weight: 700; font-size: 12.5px; color: var(--dark); cursor: pointer; }
+.local-nom:hover { text-decoration: underline; }
+.local-meta { font-size: 10.5px; color: var(--gray); margin-top: 2px; }
+
+.jour-cell { width: 34px; height: 46px; text-align: center; cursor: pointer; vertical-align: middle; position: relative; }
+.jour-cell.prevu { background: rgba(143,211,199,0.18); }
+.jour-cell:hover { background: rgba(143,211,199,0.35); }
+.jour-cell .marque { font-size: 14px; line-height: 1; }
+.jour-cell .heures { font-size: 8.5px; color: var(--gray); display: block; margin-top: 1px; }
+.jour-cell.fait .marque { color: var(--accent-dark); }
+.jour-cell.manque { background: var(--warn-bg); }
+.jour-cell.weekend-off { background: repeating-linear-gradient(45deg, #f6f4f1, #f6f4f1 4px, #efece7 4px, #efece7 8px); }
+
+.col-resume { min-width: 100px; text-align: center; padding: 6px 8px !important; }
+.resume-montant { font-weight: 700; }
+.badge-conformite { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: 600; }
+.badge-ok { background: var(--ok-bg); color: var(--accent-dark); }
+.badge-ko { background: var(--warn-bg); color: var(--warn); }
+
+tfoot td, tfoot th { background: var(--dark) !important; color: var(--white); font-weight: 700; position: sticky; bottom: 0; }
+
+/* PANNEAU SUPPLEMENTS */
+.section-titre { font-size: 13px; font-weight: 700; margin: 28px 0 12px; text-transform: uppercase; letter-spacing: 0.6px; }
+.supplements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.supplement-carte { background: var(--white); border-radius: 10px; padding: 14px 16px; box-shadow: 0 2px 12px rgba(31,59,68,0.05); }
+.supplement-carte h4 { font-size: 12.5px; margin-bottom: 8px; }
+.supplement-ligne { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.supplement-ligne input[type=text] { flex: 1; }
+.supplement-ligne input[type=number] { width: 80px; }
+.supplement-ligne button { background: none; border: none; color: var(--gray); cursor: pointer; font-size: 15px; }
+.supplement-ligne button:hover { color: var(--warn); }
+.btn-add-sup { margin-top: 4px; font-size: 11px; background: none; border: 1.5px dashed var(--accent); border-radius: 6px; padding: 5px 10px; cursor: pointer; color: var(--dark); }
+
+input[type=text], input[type=number], input[type=time], select {
+  font-family: 'Inter', sans-serif; font-size: 12.5px; color: var(--dark);
+  border: 1.5px solid var(--border); border-radius: 6px; padding: 6px 8px; background: var(--white);
+}
+input:focus, select:focus { outline: none; border-color: var(--accent-dark); }
+label { display: block; font-size: 10.5px; color: var(--gray); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+
+/* TOTAL GENERAL */
+.total-general {
+  background: var(--dark); color: var(--white); border-radius: 10px; padding: 18px 24px;
+  display: flex; justify-content: space-between; align-items: center; margin-top: 24px;
+}
+.total-general .label { font-size: 12px; letter-spacing: 0.5px; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+.total-general .montant { font-size: 24px; font-weight: 700; }
+
+/* MODALES */
+.overlay { position: fixed; inset: 0; background: rgba(31,59,68,0.45); display: flex; align-items: center; justify-content: center; z-index: 500; padding: 20px; }
+.modale { background: var(--white); border-radius: 12px; padding: 24px 28px; width: 100%; max-width: 480px; max-height: 90vh; overflow: auto; box-shadow: 0 10px 60px rgba(0,0,0,0.25); }
+.modale h3 { font-size: 15px; margin-bottom: 4px; }
+.modale .sous-titre { font-size: 11.5px; color: var(--gray); margin-bottom: 18px; }
+.champ { margin-bottom: 14px; }
+.champ input, .champ select { width: 100%; }
+.champ-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.jours-semaine { display: flex; gap: 6px; flex-wrap: wrap; }
+.jour-toggle { padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 11.5px; user-select: none; }
+.jour-toggle.actif { background: var(--accent); border-color: var(--accent); font-weight: 700; }
+.forfait-preview { background: var(--bg); border-radius: 8px; padding: 12px 14px; margin: 14px 0; }
+.forfait-preview .montant { font-size: 20px; font-weight: 700; color: var(--dark); }
+.forfait-preview .detail { font-size: 10.5px; color: var(--gray); margin-top: 2px; }
+.override-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 11.5px; color: var(--gray); }
+.override-row input[type=checkbox] { width: auto; }
+.modale-actions { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; }
+
+.popover { position: absolute; background: var(--white); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); padding: 16px; z-index: 600; width: 230px; }
+.popover label { margin-top: 8px; }
+.popover .champ-row { gap: 8px; }
+.popover-actions { display: flex; justify-content: space-between; margin-top: 14px; }
+.check-fait { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+.check-fait input { width: auto; }
+
+.empty-hint { text-align: center; color: var(--gray); font-size: 11px; padding: 30px; }
+
+@media (max-width: 720px) {
+  .toolbar { padding: 12px 14px; }
+  .contenu { padding: 16px 14px 50px; }
+  .champ-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="brand"><strong>OptiClean</strong><span>Suivi ménage — locaux professionnels</span></div>
+  <div class="mois-nav">
+    <button id="moisPrev" title="Mois précédent">‹</button>
+    <div class="mois-label" id="moisLabel"></div>
+    <button id="moisNext" title="Mois suivant">›</button>
+  </div>
+  <div class="toolbar-actions">
+    <button class="btn btn-accent" id="btnNouveauLocal">+ Nouveau local</button>
+    <button class="btn btn-ghost" id="btnSauvegarder">Sauvegarder</button>
+    <button class="btn btn-ghost" id="btnCharger">Charger</button>
+    <input type="file" id="inputCharger" accept="application/json" />
+  </div>
+</div>
+
+<div class="contenu" id="contenu">
+  <!-- rempli en JavaScript -->
+</div>
+
+<div id="modales"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Modèle de tarification OptiClean ---------- */
+  var TARIFS_ENGAGEMENT = { "12": 36, "6": 40, "0": 43 };
+  var LABEL_ENGAGEMENT = { "12": "Engagement 12 mois", "6": "Engagement 6 mois", "0": "Sans engagement" };
+  var SEMAINES_PAR_MOIS = 52 / 12;
+  var RYTHMES = [
+    { id: "2mois", label: "2 passages / mois", joursParSemaine: null, remise: 0 },
+    { id: "1sem", label: "1 passage / semaine", joursParSemaine: 1, remise: 0 },
+    { id: "2sem", label: "2 passages / semaine", joursParSemaine: 2, remise: 0.05 },
+    { id: "3sem", label: "3 passages / semaine", joursParSemaine: 3, remise: 0.09 },
+    { id: "4sem", label: "4 passages / semaine", joursParSemaine: 4, remise: 0.11 },
+    { id: "5sem", label: "5 passages / semaine", joursParSemaine: 5, remise: 0.14 },
+    { id: "6sem", label: "6 passages / semaine", joursParSemaine: 6, remise: 0.17 },
+    { id: "7sem", label: "7 passages / semaine", joursParSemaine: 7, remise: 0.20 }
+  ];
+  var JOURS_LABEL = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]; // 0=lundi ... 6=dimanche
+
+  function rythmeParId(id) {
+    for (var i = 0; i < RYTHMES.length; i++) if (RYTHMES[i].id === id) return RYTHMES[i];
+    return RYTHMES[0];
+  }
+
+  function tempsEstimeHeures(surface) {
+    surface = Number(surface) || 0;
+    var n = Math.ceil(surface / 75) || 1;
+    return 0.5 * n + 0.5;
+  }
+
+  function passagesParMoisMoyen(rythmeId) {
+    if (rythmeId === "2mois") return 2;
+    var r = rythmeParId(rythmeId);
+    return r.joursParSemaine * SEMAINES_PAR_MOIS;
+  }
+
+  function forfaitCalcule(local) {
+    var temps = tempsEstimeHeures(local.surface);
+    var tarifH = TARIFS_ENGAGEMENT[local.engagement] || 0;
+    var rythme = rythmeParId(local.rythme);
+    var passages = passagesParMoisMoyen(local.rythme);
+    return Math.round(temps * tarifH * passages * (1 - rythme.remise) * 100) / 100;
+  }
+
+  function forfaitEffectif(local) {
+    if (local.forfaitOverride !== null && local.forfaitOverride !== undefined && local.forfaitOverride !== "") {
+      return Number(local.forfaitOverride);
+    }
+    return forfaitCalcule(local);
+  }
+
+  /* ---------- Stockage ---------- */
+  var CLE_STOCKAGE = "opticlean-suivi-menage-v1";
+
+  function donneesParDefaut() {
+    return { version: 1, locaux: [], mois: {} };
+  }
+
+  function chargerDepuisNavigateur() {
+    try {
+      var brut = window.localStorage.getItem(CLE_STOCKAGE);
+      if (!brut) return donneesParDefaut();
+      var parsed = JSON.parse(brut);
+      if (!parsed || !parsed.locaux) return donneesParDefaut();
+      return parsed;
+    } catch (e) {
+      console.warn("Lecture des données locales impossible, on repart à vide.", e);
+      return donneesParDefaut();
+    }
+  }
+
+  function sauvegarderDansNavigateur() {
+    try {
+      window.localStorage.setItem(CLE_STOCKAGE, JSON.stringify(etat.data));
+    } catch (e) {
+      console.warn("Sauvegarde locale impossible (navigateur).", e);
+    }
+  }
+
+  var etat = {
+    data: chargerDepuisNavigateur(),
+    moisCourant: moisActuelISO()
+  };
+
+  function moisActuelISO() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+  }
+
+  function idUnique() {
+    return "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+
+  function getMoisData(moisISO) {
+    if (!etat.data.mois[moisISO]) {
+      etat.data.mois[moisISO] = { passages: {}, supplements: {} };
+    }
+    var m = etat.data.mois[moisISO];
+    if (!m.passages) m.passages = {};
+    if (!m.supplements) m.supplements = {};
+    return m;
+  }
+
+  function persister() {
+    sauvegarderDansNavigateur();
+  }
+
+  /* ---------- Aides dates ---------- */
+  var NOMS_MOIS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+  function decomposerMoisISO(moisISO) {
+    var parts = moisISO.split("-");
+    return { annee: Number(parts[0]), moisIndex: Number(parts[1]) - 1 };
+  }
+
+  function nbJoursDansMois(annee, moisIndex) {
+    return new Date(annee, moisIndex + 1, 0).getDate();
+  }
+
+  function jourSemaineLundi0(annee, moisIndex, jour) {
+    var jsDay = new Date(annee, moisIndex, jour).getDay(); // 0=dimanche..6=samedi
+    return (jsDay + 6) % 7; // 0=lundi..6=dimanche
+  }
+
+  function dateISO(annee, moisIndex, jour) {
+    return annee + "-" + String(moisIndex + 1).padStart(2, "0") + "-" + String(jour).padStart(2, "0");
+  }
+
+  function decalerMois(moisISO, delta) {
+    var d = decomposerMoisISO(moisISO);
+    var total = d.annee * 12 + d.moisIndex + delta;
+    var annee = Math.floor(total / 12);
+    var moisIndex = ((total % 12) + 12) % 12;
+    return annee + "-" + String(moisIndex + 1).padStart(2, "0");
+  }
+
+  function ajouterMinutes(heureStr, minutes) {
+    var parts = heureStr.split(":");
+    var h = Number(parts[0]), m = Number(parts[1]);
+    var total = h * 60 + m + minutes;
+    total = ((total % 1440) + 1440) % 1440;
+    var hh = Math.floor(total / 60), mm = total % 60;
+    return String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0");
+  }
+
+  function heureVersMinutes(heureStr) {
+    if (!heureStr) return null;
+    var parts = heureStr.split(":");
+    return Number(parts[0]) * 60 + Number(parts[1]);
+  }
+
+  function formatMontant(n) {
+    return (Math.round((n || 0) * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  }
+
+  function formatDuree(minutes) {
+    if (!minutes && minutes !== 0) return "";
+    var h = Math.floor(minutes / 60), m = Math.round(minutes % 60);
+    if (m === 0) return h + " h";
+    return h + " h " + String(m).padStart(2, "0");
+  }
+
+  /* ---------- Passages prévus pour un local, un mois donné ---------- */
+  function joursPrevusDuMois(local, annee, moisIndex) {
+    var nbJours = nbJoursDansMois(annee, moisIndex);
+    var joursOuverts = [];
+    if (local.rythme === "2mois") {
+      return []; // pas de génération automatique : dates libres, saisies à la main
+    }
+    var joursSemaine = local.joursPrevus || [];
+    for (var j = 1; j <= nbJours; j++) {
+      var wd = jourSemaineLundi0(annee, moisIndex, j);
+      if (joursSemaine.indexOf(wd) !== -1) joursOuverts.push(j);
+    }
+    return joursOuverts;
+  }
+
+  function nombrePassagesPrevusMois(local, annee, moisIndex) {
+    if (local.rythme === "2mois") return 2;
+    return joursPrevusDuMois(local, annee, moisIndex).length;
+  }
+
+  /* ---------- Rendu ---------- */
+  var elContenu = document.getElementById("contenu");
+  var elMoisLabel = document.getElementById("moisLabel");
+  var elModales = document.getElementById("modales");
+
+  function render() {
+    var d = decomposerMoisISO(etat.moisCourant);
+    elMoisLabel.textContent = NOMS_MOIS[d.moisIndex] + " " + d.annee;
+
+    if (etat.data.locaux.length === 0) {
+      elContenu.innerHTML =
+        '<div class="bandeau-vide">' +
+        "<p>Aucun local pour l'instant.</p>" +
+        '<button class="btn btn-accent" id="btnPremierLocal">+ Ajouter le premier local</button>' +
+        "</div>";
+      document.getElementById("btnPremierLocal").onclick = function () { ouvrirModaleLocal(null); };
+      return;
+    }
+
+    var html = "";
+    html += '<div class="avertissement"><strong>Rappel :</strong> les données restent dans ce navigateur, sur cet ordinateur. Pensez à cliquer sur « Sauvegarder » régulièrement pour garder un fichier de secours.</div>';
+    html += rendreTableau(d.annee, d.moisIndex);
+    html += rendreSupplements(d.annee, d.moisIndex);
+    html += rendreTotalGeneral(d.annee, d.moisIndex);
+    elContenu.innerHTML = html;
+    attacherEvenementsTableau(d.annee, d.moisIndex);
+  }
+
+  function rendreTableau(annee, moisIndex) {
+    var nbJours = nbJoursDansMois(annee, moisIndex);
+    var html = '<div class="table-wrap"><table class="suivi"><thead><tr><th class="col-local">Local</th>';
+    for (var j = 1; j <= nbJours; j++) {
+      var wd = jourSemaineLundi0(annee, moisIndex, j);
+      html += '<th title="' + JOURS_LABEL[wd] + '">' + j + "<br>" + JOURS_LABEL[wd][0] + "</th>";
+    }
+    html += '<th class="col-resume">Prévu / fait</th><th class="col-resume">Durée</th><th class="col-resume">Forfait</th><th class="col-resume">Suppléments</th><th class="col-resume">Total</th></tr></thead><tbody>';
+
+    etat.data.locaux.forEach(function (local) {
+      var joursPrevus = joursPrevusDuMois(local, annee, moisIndex);
+      var moisData = getMoisData(etat.moisCourant);
+      var passagesLocal = moisData.passages[local.id] || {};
+      var nbPrevu = nombrePassagesPrevusMois(local, annee, moisIndex);
+      var nbFait = 0, dureeReelleMin = 0;
+      var dureePrevueUnitaireMin = tempsEstimeHeures(local.surface) * 60;
+
+      html += "<tr><th class=\"col-local\"><div class=\"local-nom\" data-edit-local=\"" + local.id + "\">" + escHtml(local.nom) + "</div>";
+      html += '<div class="local-meta">' + local.surface + " m² · " + LABEL_ENGAGEMENT[local.engagement] + "</div></th>";
+
+      for (var j = 1; j <= nbJours; j++) {
+        var iso = dateISO(annee, moisIndex, j);
+        var prevu = joursPrevus.indexOf(j) !== -1;
+        var passage = passagesLocal[iso];
+        var classes = "jour-cell" + (prevu ? " prevu" : "");
+        var contenuCell = "";
+        if (passage && passage.fait) {
+          nbFait++;
+          if (passage.heureDebut && passage.heureFin) {
+            dureeReelleMin += Math.max(0, heureVersMinutes(passage.heureFin) - heureVersMinutes(passage.heureDebut));
+          }
+          classes += " fait";
+          contenuCell = '<span class="marque">✓</span>';
+          if (passage.heureDebut && passage.heureFin) {
+            contenuCell += '<span class="heures">' + passage.heureDebut + "-" + passage.heureFin + "</span>";
+          }
+        } else if (prevu) {
+          contenuCell = '<span class="marque" style="color:var(--gray)">·</span>';
+        }
+        html += '<td class="' + classes + '" data-jour-cell data-local="' + local.id + '" data-date="' + iso + '">' + contenuCell + "</td>";
+      }
+
+      var forfait = forfaitEffectif(local);
+      var supplementsLocal = (moisData.supplements[local.id] || []);
+      var totalSupplements = supplementsLocal.reduce(function (s, x) { return s + (Number(x.montant) || 0); }, 0);
+      var totalLocal = forfait + totalSupplements;
+      var conforme = nbFait >= nbPrevu;
+
+      html += '<td class="col-resume"><span class="badge-conformite ' + (conforme ? "badge-ok" : "badge-ko") + '">' + nbFait + " / " + nbPrevu + "</span></td>";
+      html += '<td class="col-resume">' + formatDuree(dureeReelleMin) + '<div class="local-meta">prévu ' + formatDuree(dureePrevueUnitaireMin * nbPrevu) + "</div></td>";
+      html += '<td class="col-resume resume-montant">' + formatMontant(forfait) + "</td>";
+      html += '<td class="col-resume">' + (totalSupplements ? formatMontant(totalSupplements) : "—") + "</td>";
+      html += '<td class="col-resume resume-montant">' + formatMontant(totalLocal) + "</td>";
+      html += "</tr>";
+    });
+
+    html += "</tbody></table></div>";
+    return html;
+  }
+
+  function rendreSupplements(annee, moisIndex) {
+    var moisData = getMoisData(etat.moisCourant);
+    var html = '<div class="section-titre">Suppléments du mois</div><div class="supplements-grid">';
+    etat.data.locaux.forEach(function (local) {
+      var lignes = moisData.supplements[local.id] || [];
+      html += '<div class="supplement-carte" data-sup-local="' + local.id + '"><h4>' + escHtml(local.nom) + "</h4>";
+      lignes.forEach(function (ligne, idx) {
+        html += '<div class="supplement-ligne">' +
+          '<input type="text" data-sup-nom data-idx="' + idx + '" value="' + escAttr(ligne.nom) + '" placeholder="Ex : vitres" />' +
+          '<input type="number" step="0.01" data-sup-montant data-idx="' + idx + '" value="' + (ligne.montant != null ? ligne.montant : "") + '" placeholder="€" />' +
+          '<button data-sup-suppr data-idx="' + idx + '" title="Retirer">×</button>' +
+          "</div>";
+      });
+      html += '<button class="btn-add-sup" data-sup-ajouter>+ Ajouter une ligne</button></div>';
+    });
+    html += "</div>";
+    return html;
+  }
+
+  function rendreTotalGeneral(annee, moisIndex) {
+    var moisData = getMoisData(etat.moisCourant);
+    var total = 0;
+    etat.data.locaux.forEach(function (local) {
+      var forfait = forfaitEffectif(local);
+      var lignes = moisData.supplements[local.id] || [];
+      var totalSup = lignes.reduce(function (s, x) { return s + (Number(x.montant) || 0); }, 0);
+      total += forfait + totalSup;
+    });
+    return '<div class="total-general"><div class="label">Total général du mois</div><div class="montant">' + formatMontant(total) + "</div></div>";
+  }
+
+  function escHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]; });
+  }
+  function escAttr(s) {
+    return escHtml(s).replace(/"/g, "&quot;");
+  }
+
+  /* ---------- Événements du tableau ---------- */
+  function attacherEvenementsTableau(annee, moisIndex) {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-jour-cell]"), function (cell) {
+      cell.addEventListener("click", function (ev) {
+        ouvrirPopoverJour(cell, cell.getAttribute("data-local"), cell.getAttribute("data-date"));
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-edit-local]"), function (el) {
+      el.addEventListener("click", function () { ouvrirModaleLocal(el.getAttribute("data-edit-local")); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sup-ajouter]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var localId = btn.closest("[data-sup-local]").getAttribute("data-sup-local");
+        var moisData = getMoisData(etat.moisCourant);
+        if (!moisData.supplements[localId]) moisData.supplements[localId] = [];
+        moisData.supplements[localId].push({ nom: "", montant: "" });
+        persister(); render();
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sup-suppr]"), function (btn) {
+      btn.addEventListener("click", function () {
+        var carte = btn.closest("[data-sup-local]");
+        var localId = carte.getAttribute("data-sup-local");
+        var idx = Number(btn.getAttribute("data-idx"));
+        var moisData = getMoisData(etat.moisCourant);
+        moisData.supplements[localId].splice(idx, 1);
+        persister(); render();
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sup-nom]"), function (input) {
+      input.addEventListener("change", function () {
+        majSupplement(input);
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-sup-montant]"), function (input) {
+      input.addEventListener("change", function () {
+        majSupplement(input);
+      });
+    });
+  }
+
+  function majSupplement(input) {
+    var carte = input.closest("[data-sup-local]");
+    var localId = carte.getAttribute("data-sup-local");
+    var idx = Number(input.getAttribute("data-idx"));
+    var moisData = getMoisData(etat.moisCourant);
+    var ligne = moisData.supplements[localId][idx];
+    if (input.hasAttribute("data-sup-nom")) ligne.nom = input.value;
+    if (input.hasAttribute("data-sup-montant")) ligne.montant = input.value === "" ? "" : Number(input.value);
+    persister(); render();
+  }
+
+  /* ---------- Popover jour ---------- */
+  function ouvrirPopoverJour(cellEl, localId, iso) {
+    fermerPopover();
+    var local = etat.data.locaux.find(function (l) { return l.id === localId; });
+    var moisData = getMoisData(etat.moisCourant);
+    if (!moisData.passages[localId]) moisData.passages[localId] = {};
+    var passage = moisData.passages[localId][iso] || { fait: false, heureDebut: "", heureFin: "" };
+
+    var rect = cellEl.getBoundingClientRect();
+    var pop = document.createElement("div");
+    pop.className = "popover";
+    pop.style.top = (window.scrollY + rect.bottom + 6) + "px";
+    pop.style.left = (window.scrollX + Math.min(rect.left, window.innerWidth - 250)) + "px";
+
+    var dateLisible = new Date(iso).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+    pop.innerHTML =
+      '<div style="font-weight:700;font-size:12.5px;margin-bottom:8px;text-transform:capitalize">' + dateLisible + "</div>" +
+      '<label class="check-fait"><input type="checkbox" id="popFait" ' + (passage.fait ? "checked" : "") + "> Ménage fait</label>" +
+      '<div class="champ-row" style="margin-top:10px">' +
+      '<div><label>Heure de début</label><input type="time" id="popDebut" value="' + (passage.heureDebut || "") + '" /></div>' +
+      '<div><label>Heure de fin</label><input type="time" id="popFin" value="' + (passage.heureFin || "") + '" /></div>' +
+      "</div>" +
+      '<div class="popover-actions">' +
+      '<button class="btn btn-outline" id="popFermer">Fermer</button>' +
+      '<button class="btn btn-accent" id="popEnregistrer">Enregistrer</button>' +
+      "</div>";
+    elModales.appendChild(pop);
+
+    var champDebut = pop.querySelector("#popDebut");
+    var champFin = pop.querySelector("#popFin");
+    champDebut.addEventListener("change", function () {
+      if (champDebut.value && !champFin.value && local) {
+        var minutes = Math.round(tempsEstimeHeures(local.surface) * 60);
+        champFin.value = ajouterMinutes(champDebut.value, minutes);
+      }
+    });
+
+    pop.querySelector("#popFermer").onclick = fermerPopover;
+    pop.querySelector("#popEnregistrer").onclick = function () {
+      var fait = pop.querySelector("#popFait").checked;
+      moisData.passages[localId][iso] = {
+        fait: fait,
+        heureDebut: champDebut.value || "",
+        heureFin: champFin.value || ""
+      };
+      persister();
+      fermerPopover();
+      render();
+    };
+
+    setTimeout(function () {
+      document.addEventListener("mousedown", clicExterieurPopover);
+    }, 0);
+  }
+
+  function clicExterieurPopover(ev) {
+    var pop = document.querySelector(".popover");
+    if (pop && !pop.contains(ev.target)) fermerPopover();
+  }
+
+  function fermerPopover() {
+    document.removeEventListener("mousedown", clicExterieurPopover);
+    var pop = document.querySelector(".popover");
+    if (pop) pop.remove();
+  }
+
+  /* ---------- Modale local (création / édition) ---------- */
+  function ouvrirModaleLocal(localId) {
+    var local = localId ? etat.data.locaux.find(function (l) { return l.id === localId; }) : null;
+    var brouillon = local ? Object.assign({}, local, { joursPrevus: (local.joursPrevus || []).slice() }) : {
+      id: null, nom: "", surface: 100, engagement: "12", rythme: "1sem", joursPrevus: [0],
+      forfaitOverride: null
+    };
+
+    var overlay = document.createElement("div");
+    overlay.className = "overlay";
+    overlay.innerHTML =
+      '<div class="modale">' +
+      "<h3>" + (local ? "Modifier le local" : "Nouveau local") + "</h3>" +
+      '<div class="sous-titre">Le forfait mensuel se calcule automatiquement selon la grille tarifaire OptiClean.</div>' +
+      '<div class="champ"><label>Nom du local</label><input type="text" id="champNom" value="' + escAttr(brouillon.nom) + '" placeholder="Ex : Cabinet Dupont" /></div>' +
+      '<div class="champ-row">' +
+      '<div class="champ"><label>Surface (m²)</label><input type="number" id="champSurface" min="1" value="' + brouillon.surface + '" /></div>' +
+      '<div class="champ"><label>Engagement</label><select id="champEngagement">' +
+      '<option value="12"' + (brouillon.engagement === "12" ? " selected" : "") + ">12 mois (36 € HT/h)</option>" +
+      '<option value="6"' + (brouillon.engagement === "6" ? " selected" : "") + ">6 mois (40 € HT/h)</option>" +
+      '<option value="0"' + (brouillon.engagement === "0" ? " selected" : "") + ">Sans engagement (43 € HT/h)</option>" +
+      "</select></div>" +
+      "</div>" +
+      '<div class="champ"><label>Rythme de passage</label><select id="champRythme">' +
+      RYTHMES.map(function (r) { return '<option value="' + r.id + '"' + (brouillon.rythme === r.id ? " selected" : "") + ">" + r.label + (r.remise ? " (" + Math.round(r.remise * 100) + " % de remise)" : "") + "</option>"; }).join("") +
+      "</select></div>" +
+      '<div class="champ" id="blocJours"><label>Jours de passage prévus</label><div class="jours-semaine">' +
+      JOURS_LABEL.map(function (lbl, i) { return '<div class="jour-toggle" data-jour-toggle="' + i + '">' + lbl + "</div>"; }).join("") +
+      "</div></div>" +
+      '<div class="forfait-preview" id="apercuForfait"></div>' +
+      '<div class="override-row"><input type="checkbox" id="champOverrideActif" ' + (brouillon.forfaitOverride !== null && brouillon.forfaitOverride !== undefined ? "checked" : "") + '> Remplacer par un montant négocié à la main</div>' +
+      '<div class="champ" id="blocOverride" style="display:none;margin-top:8px"><input type="number" step="0.01" id="champOverride" value="' + (brouillon.forfaitOverride || "") + '" placeholder="Montant en €" /></div>' +
+      '<div class="modale-actions">' +
+      (local ? '<button class="btn btn-danger" id="btnSupprimerLocal">Supprimer ce local</button>' : "<div></div>") +
+      '<div style="display:flex;gap:8px"><button class="btn btn-outline" id="btnAnnulerLocal">Annuler</button><button class="btn btn-accent" id="btnValiderLocal">Enregistrer</button></div>' +
+      "</div>" +
+      "</div>";
+    elModales.appendChild(overlay);
+
+    function majJoursToggles() {
+      Array.prototype.forEach.call(overlay.querySelectorAll("[data-jour-toggle]"), function (el) {
+        var i = Number(el.getAttribute("data-jour-toggle"));
+        el.classList.toggle("actif", brouillon.joursPrevus.indexOf(i) !== -1);
+      });
+      overlay.querySelector("#blocJours").style.display = (overlay.querySelector("#champRythme").value === "2mois") ? "none" : "";
+    }
+    function majApercu() {
+      var f = forfaitCalcule(brouillon);
+      var temps = tempsEstimeHeures(brouillon.surface);
+      var overrideActif = overlay.querySelector("#champOverrideActif").checked;
+      var overlayMontant = overrideActif ? Number(overlay.querySelector("#champOverride").value || 0) : f;
+      overlay.querySelector("#apercuForfait").innerHTML =
+        '<div class="montant">' + formatMontant(overlayMontant) + " / mois</div>" +
+        '<div class="detail">Calcul grille : ' + formatMontant(f) + " · temps estimé " + temps + " h par passage" + (overrideActif ? " (montant remplacé ci-dessous)" : "") + "</div>";
+    }
+
+    majJoursToggles();
+    majApercu();
+
+    Array.prototype.forEach.call(overlay.querySelectorAll("[data-jour-toggle]"), function (el) {
+      el.addEventListener("click", function () {
+        var i = Number(el.getAttribute("data-jour-toggle"));
+        var pos = brouillon.joursPrevus.indexOf(i);
+        if (pos === -1) brouillon.joursPrevus.push(i); else brouillon.joursPrevus.splice(pos, 1);
+        majJoursToggles();
+      });
+    });
+    overlay.querySelector("#champSurface").addEventListener("input", function (e) { brouillon.surface = Number(e.target.value) || 0; majApercu(); });
+    overlay.querySelector("#champEngagement").addEventListener("change", function (e) { brouillon.engagement = e.target.value; majApercu(); });
+    overlay.querySelector("#champRythme").addEventListener("change", function (e) { brouillon.rythme = e.target.value; majJoursToggles(); majApercu(); });
+    overlay.querySelector("#champOverrideActif").addEventListener("change", function (e) {
+      overlay.querySelector("#blocOverride").style.display = e.target.checked ? "" : "none";
+      majApercu();
+    });
+    overlay.querySelector("#champOverride").addEventListener("input", majApercu);
+
+    overlay.querySelector("#btnAnnulerLocal").onclick = function () { overlay.remove(); };
+    overlay.addEventListener("mousedown", function (e) { if (e.target === overlay) overlay.remove(); });
+
+    if (local) {
+      overlay.querySelector("#btnSupprimerLocal").onclick = function () {
+        if (!confirm("Supprimer définitivement « " + local.nom + " » et son suivi du mois en cours ? Cette action ne peut pas être annulée.")) return;
+        etat.data.locaux = etat.data.locaux.filter(function (l) { return l.id !== local.id; });
+        persister();
+        overlay.remove();
+        render();
+      };
+    }
+
+    overlay.querySelector("#btnValiderLocal").onclick = function () {
+      var nom = overlay.querySelector("#champNom").value.trim();
+      if (!nom) { alert("Le nom du local est obligatoire."); return; }
+      brouillon.nom = nom;
+      brouillon.surface = Number(overlay.querySelector("#champSurface").value) || 0;
+      brouillon.engagement = overlay.querySelector("#champEngagement").value;
+      brouillon.rythme = overlay.querySelector("#champRythme").value;
+      var overrideActif = overlay.querySelector("#champOverrideActif").checked;
+      brouillon.forfaitOverride = overrideActif ? Number(overlay.querySelector("#champOverride").value || 0) : null;
+
+      if (local) {
+        Object.assign(local, brouillon);
+      } else {
+        brouillon.id = idUnique();
+        etat.data.locaux.push(brouillon);
+      }
+      persister();
+      overlay.remove();
+      render();
+    };
+  }
+
+  /* ---------- Sauvegarde / chargement fichier ---------- */
+  function exporterFichier() {
+    var blob = new Blob([JSON.stringify(etat.data, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    var horodatage = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = "opticlean-suivi-menage-" + horodatage + ".json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function importerFichier(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var parsed = JSON.parse(reader.result);
+        if (!parsed || !Array.isArray(parsed.locaux)) throw new Error("format inattendu");
+        if (!confirm("Charger ce fichier va remplacer les données actuellement affichées dans ce navigateur. Continuer ?")) return;
+        etat.data = parsed;
+        if (!etat.data.mois) etat.data.mois = {};
+        persister();
+        render();
+      } catch (e) {
+        alert("Ce fichier ne peut pas être lu comme une sauvegarde OptiClean valide.");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  /* ---------- Initialisation ---------- */
+  document.getElementById("moisPrev").addEventListener("click", function () { etat.moisCourant = decalerMois(etat.moisCourant, -1); render(); });
+  document.getElementById("moisNext").addEventListener("click", function () { etat.moisCourant = decalerMois(etat.moisCourant, 1); render(); });
+  document.getElementById("btnNouveauLocal").addEventListener("click", function () { ouvrirModaleLocal(null); });
+  document.getElementById("btnSauvegarder").addEventListener("click", exporterFichier);
+  document.getElementById("btnCharger").addEventListener("click", function () { document.getElementById("inputCharger").click(); });
+  document.getElementById("inputCharger").addEventListener("change", function (e) {
+    if (e.target.files && e.target.files[0]) importerFichier(e.target.files[0]);
+    e.target.value = "";
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
