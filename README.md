@@ -8,11 +8,15 @@ Ouvrir `index.html` dans un navigateur (Chrome ou Edge).
 
 ## Fonctionnement
 
-Deux écrans, accessibles par les deux onglets en haut :
+Trois écrans, accessibles par les onglets en haut :
 
 - **Cette semaine** : l'écran d'accueil. Un agenda de la semaine en cours,
   aujourd'hui mis en avant, avec la liste des locaux à nettoyer chaque jour
   et une case à cocher. C'est l'écran à ouvrir chaque matin.
+- **Le mois** : un calendrier classique du mois, une pastille par jour
+  (vert = tout est fait, rouge = un jour passé incomplet, gris = encore à
+  venir). Cliquer sur un jour ouvre sa semaine dans l'écran précédent pour
+  le détail.
 - **Mes locaux** : la partie comptable, mois par mois. Une carte par local
   avec son forfait, sa conformité (passages prévus vs faits) et ses
   suppléments. C'est ici qu'on crée et modifie les locaux.

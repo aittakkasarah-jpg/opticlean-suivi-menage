@@ -118,6 +118,26 @@ input[type=file] { display: none; }
 .ajout-jour { padding: 8px 10px 12px; }
 .ajout-jour select { width: 100%; }
 
+/* VUE MOIS : calendrier */
+.mois-entetes { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+.mois-entetes div { text-align: center; font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--gray); letter-spacing: 0.4px; }
+.mois-grille { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.mois-case {
+  background: var(--white); border-radius: 8px; padding: 8px; min-height: 78px;
+  cursor: pointer; border: 1.5px solid transparent; display: flex; flex-direction: column; gap: 6px;
+}
+.mois-case:hover { border-color: var(--accent); }
+.mois-case.hors-mois { background: transparent; box-shadow: none; opacity: 0.4; }
+.mois-case.aujourdhui { border-color: var(--accent-dark); background: var(--ok-bg); }
+.mois-jour-num { font-size: 12px; font-weight: 700; }
+.mois-badge { align-self: flex-start; font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 8px; }
+.mois-badge.badge-complet { background: var(--ok-bg); color: var(--accent-dark); }
+.mois-badge.badge-attente { background: var(--bg); color: var(--gray); }
+.mois-badge.badge-manque { background: var(--warn-bg); color: var(--warn); }
+.mois-legende { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 16px; font-size: 11px; color: var(--gray); }
+.mois-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.mois-legende i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
 /* VUE LOCAUX : cartes */
 .locaux-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .local-carte { background: var(--white); border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 12px rgba(31,59,68,0.05); }
@@ -187,6 +207,11 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   .contenu { padding: 16px 14px 50px; }
   .champ-row { grid-template-columns: 1fr; }
   .periode-nav .periode-label { min-width: 0; font-size: 13px; }
+  .mois-grille { gap: 3px; }
+  .mois-case { min-height: 48px; padding: 4px; border-radius: 6px; }
+  .mois-jour-num { font-size: 10.5px; }
+  .mois-badge { font-size: 9px; padding: 1px 5px; }
+  .mois-entetes div { font-size: 9px; }
 }
 </style>
 </head>
@@ -196,6 +221,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   <div class="brand"><strong>OptiClean</strong><span>Suivi ménage</span></div>
   <div class="onglets">
     <button class="onglet" id="ongletSemaine">Cette semaine</button>
+    <button class="onglet" id="ongletMois">Le mois</button>
     <button class="onglet" id="ongletLocaux">Mes locaux</button>
   </div>
   <div class="toolbar-actions">
@@ -471,6 +497,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
 
   function render() {
     document.getElementById("ongletSemaine").classList.toggle("actif", etat.vue === "semaine");
+    document.getElementById("ongletMois").classList.toggle("actif", etat.vue === "mois");
     document.getElementById("ongletLocaux").classList.toggle("actif", etat.vue === "locaux");
 
     if (etat.data.locaux.length === 0) {
@@ -485,6 +512,8 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
 
     if (etat.vue === "locaux") {
       renderVueLocaux();
+    } else if (etat.vue === "mois") {
+      renderVueMois();
     } else {
       renderVueSemaine();
     }
@@ -674,6 +703,86 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     document.removeEventListener("mousedown", clicExterieurPopover);
     var pop = document.querySelector(".popover");
     if (pop) pop.remove();
+  }
+
+  /* ================= VUE MOIS (calendrier) ================= */
+  function semainesDuMoisGrille(moisISO) {
+    var d = decomposerMoisISO(moisISO);
+    var premierJour = moisISO + "-01";
+    var dernierJour = moisISO + "-" + pad2(nbJoursDansMois(d.annee, d.moisIndex));
+    var lundiDebut = lundiDeLaSemaineISO(premierJour);
+    var lundiFin = lundiDeLaSemaineISO(dernierJour);
+    var semaines = [];
+    var curseur = lundiDebut;
+    while (true) {
+      semaines.push(datesDeLaSemaine(curseur));
+      if (curseur === lundiFin) break;
+      curseur = ajouterJoursISO(curseur, 7);
+    }
+    return semaines;
+  }
+
+  function renderVueMois() {
+    var d = decomposerMoisISO(etat.moisAffiche);
+    var aujourdhui = aujourdHuiISO();
+    var semaines = semainesDuMoisGrille(etat.moisAffiche);
+
+    var html = '<div class="periode-nav">' +
+      '<button class="rond" id="moisVuePrev" title="Mois précédent">‹</button>' +
+      '<div class="periode-label">' + NOMS_MOIS[d.moisIndex] + " " + d.annee + '</div>' +
+      '<button class="rond" id="moisVueNext" title="Mois suivant">›</button>' +
+      "</div>";
+
+    html += '<div class="mois-entetes">' + JOURS_LABEL.map(function (l) { return "<div>" + l + "</div>"; }).join("") + "</div>";
+    html += '<div class="mois-grille">';
+
+    semaines.forEach(function (semaine) {
+      semaine.forEach(function (iso) {
+        var horsMois = moisDeISO(iso) !== etat.moisAffiche;
+        var estAujourdhui = iso === aujourdhui;
+        var entrees = entreesDuJour(iso);
+        var jourNum = isoVersDate(iso).getDate();
+
+        var classes = "mois-case" + (horsMois ? " hors-mois" : "") + (estAujourdhui ? " aujourdhui" : "");
+        html += '<div class="' + classes + '" data-mois-case data-date="' + iso + '">';
+        html += '<div class="mois-jour-num">' + jourNum + "</div>";
+
+        if (entrees.length) {
+          var nbFait = entrees.filter(function (e) { return e.passage && e.passage.fait; }).length;
+          var badgeClasse, badgeTexte;
+          if (nbFait >= entrees.length) { badgeClasse = "badge-complet"; badgeTexte = "fait"; }
+          else if (iso < aujourdhui) { badgeClasse = "badge-manque"; badgeTexte = nbFait + "/" + entrees.length; }
+          else { badgeClasse = "badge-attente"; badgeTexte = nbFait + "/" + entrees.length; }
+          html += '<div class="mois-badge ' + badgeClasse + '">' + badgeTexte + "</div>";
+        }
+
+        html += "</div>";
+      });
+    });
+
+    html += "</div>";
+
+    html += '<div class="mois-legende">' +
+      '<span><i style="background:var(--ok-bg);border:1.5px solid var(--accent-dark)"></i>Tous les passages faits</span>' +
+      '<span><i style="background:var(--bg)"></i>Encore à venir</span>' +
+      '<span><i style="background:var(--warn-bg)"></i>Jour passé incomplet</span>' +
+      "</div>";
+
+    elContenu.innerHTML = html;
+    attacherEvenementsMois();
+  }
+
+  function attacherEvenementsMois() {
+    document.getElementById("moisVuePrev").addEventListener("click", function () { etat.moisAffiche = decalerMois(etat.moisAffiche, -1); render(); });
+    document.getElementById("moisVueNext").addEventListener("click", function () { etat.moisAffiche = decalerMois(etat.moisAffiche, 1); render(); });
+    Array.prototype.forEach.call(document.querySelectorAll("[data-mois-case]"), function (el) {
+      el.addEventListener("click", function () {
+        var iso = el.getAttribute("data-date");
+        etat.semaineCourante = lundiDeLaSemaineISO(iso);
+        etat.vue = "semaine";
+        render();
+      });
+    });
   }
 
   /* ================= VUE LOCAUX (comptabilité mensuelle) ================= */
@@ -931,6 +1040,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
 
   /* ---------- Initialisation ---------- */
   document.getElementById("ongletSemaine").addEventListener("click", function () { etat.vue = "semaine"; render(); });
+  document.getElementById("ongletMois").addEventListener("click", function () { etat.vue = "mois"; render(); });
   document.getElementById("ongletLocaux").addEventListener("click", function () { etat.vue = "locaux"; render(); });
   document.getElementById("btnSauvegarder").addEventListener("click", exporterFichier);
   document.getElementById("btnCharger").addEventListener("click", function () { document.getElementById("inputCharger").click(); });
