@@ -1,4 +1,4 @@
-# Suivi ménage — OptiClean
+# Suivi ménage OptiClean
 
 Plateforme de suivi des ménages sur les locaux professionnels (bureaux, commerces).
 Remplace le fichier `PLANNING 2025 OK.xlsx`, pensé pour l'ancienne activité Airbnb.

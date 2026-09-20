@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Suivi ménage – OptiClean</title>
+<title>Suivi ménage · OptiClean</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
@@ -173,7 +173,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
 <body>
 
 <div class="toolbar">
-  <div class="brand"><strong>OptiClean</strong><span>Suivi ménage — locaux professionnels</span></div>
+  <div class="brand"><strong>OptiClean</strong><span>Suivi ménage · locaux professionnels</span></div>
   <div class="mois-nav">
     <button id="moisPrev" title="Mois précédent">‹</button>
     <div class="mois-label" id="moisLabel"></div>
@@ -455,7 +455,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       html += '<td class="col-resume"><span class="badge-conformite ' + (conforme ? "badge-ok" : "badge-ko") + '">' + nbFait + " / " + nbPrevu + "</span></td>";
       html += '<td class="col-resume">' + formatDuree(dureeReelleMin) + '<div class="local-meta">prévu ' + formatDuree(dureePrevueUnitaireMin * nbPrevu) + "</div></td>";
       html += '<td class="col-resume resume-montant">' + formatMontant(forfait) + "</td>";
-      html += '<td class="col-resume">' + (totalSupplements ? formatMontant(totalSupplements) : "—") + "</td>";
+      html += '<td class="col-resume">' + (totalSupplements ? formatMontant(totalSupplements) : "0,00 €") + "</td>";
       html += '<td class="col-resume resume-montant">' + formatMontant(totalLocal) + "</td>";
       html += "</tr>";
     });
@@ -673,7 +673,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       var overlayMontant = overrideActif ? Number(overlay.querySelector("#champOverride").value || 0) : f;
       overlay.querySelector("#apercuForfait").innerHTML =
         '<div class="montant">' + formatMontant(overlayMontant) + " / mois</div>" +
-        '<div class="detail">Calcul grille : ' + formatMontant(f) + " · temps estimé " + temps + " h par passage" + (overrideActif ? " (montant remplacé ci-dessous)" : "") + "</div>";
+        '<div class="detail">Calcul grille : ' + formatMontant(f) + " · temps estimé " + temps + " h par passage" + (overrideActif ? " (montant remplacé juste en dessous)" : "") + "</div>";
     }
 
     majJoursToggles();
