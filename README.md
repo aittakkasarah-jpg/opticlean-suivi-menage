@@ -8,6 +8,17 @@ Ouvrir `index.html` dans un navigateur (Chrome ou Edge).
 
 ## Fonctionnement
 
+Deux écrans, accessibles par les deux onglets en haut :
+
+- **Cette semaine** : l'écran d'accueil. Un agenda de la semaine en cours,
+  aujourd'hui mis en avant, avec la liste des locaux à nettoyer chaque jour
+  et une case à cocher. C'est l'écran à ouvrir chaque matin.
+- **Mes locaux** : la partie comptable, mois par mois. Une carte par local
+  avec son forfait, sa conformité (passages prévus vs faits) et ses
+  suppléments. C'est ici qu'on crée et modifie les locaux.
+
+Autres points :
+
 - **Un seul utilisateur, sur un seul ordinateur.** Les données restent dans le
   navigateur (stockage local). Cliquer régulièrement sur **Sauvegarder** pour
   télécharger un fichier de secours, et sur **Charger** pour le remettre.
@@ -18,11 +29,11 @@ Ouvrir `index.html` dans un navigateur (Chrome ou Edge).
   seul à partir de la grille tarifaire officielle OptiClean (voir
   `Grilles_Tarifaires_OptiClean_3Formules.pdf`, hors de ce dossier). Un
   montant peut être saisi à la main si un cas a été négocié hors grille.
-- Le calendrier du mois sert à vérifier que le contrat est respecté (jours
-  prévus vs jours réellement faits, avec heure de début et de fin), pas à
-  calculer le prix.
+- L'agenda sert à vérifier que le contrat est respecté (jours prévus vs
+  jours réellement faits, avec heure de début et de fin), pas à calculer
+  le prix : le forfait reste fixe.
 - Les suppléments (vitres, intervention ponctuelle...) se saisissent
-  librement, local par local, mois par mois.
+  librement, local par local, mois par mois, dans l'onglet Mes locaux.
 
 ## Hors périmètre (délibérément, voir le cahier des charges)
 
