@@ -229,7 +229,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
 
 .presta-ligne { background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
 .presta-ligne-top { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; }
-.presta-ligne-top input[type=text] { flex: 1.6; }
+.presta-ligne-top select { flex: 1.6; }
 .presta-ligne-top input[type=number] { width: 90px; }
 .presta-ligne-top button { background: none; border: none; color: var(--gray); cursor: pointer; font-size: 15px; flex-shrink: 0; }
 .presta-ligne-top button:hover { color: var(--warn); }
@@ -313,6 +313,13 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     { id: "5sem", label: "5 passages / semaine", joursParSemaine: 5, remise: 0.14 },
     { id: "6sem", label: "6 passages / semaine", joursParSemaine: 6, remise: 0.17 },
     { id: "7sem", label: "7 passages / semaine", joursParSemaine: 7, remise: 0.20 }
+  ];
+  // Les deux seules prestations complémentaires réellement nommées dans les
+  // documents OptiClean (grille tarifaire, prestations exclues du forfait de
+  // base). Pas de catalogue plus large inventé : "Autre" couvre le reste.
+  var PRESTATIONS_CATALOGUE = [
+    "Vitrerie grande hauteur",
+    "Consommables sanitaires (savons, essuie-mains)"
   ];
   var JOURS_LABEL = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]; // 0=lundi ... 6=dimanche
   var JOURS_NOM_COMPLET = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
@@ -1191,16 +1198,37 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
           var actif = dispo && p.jours.indexOf(i) !== -1;
           return '<div class="jour-toggle' + (actif ? " actif" : "") + (dispo ? "" : " indisponible") + '" data-presta-jour="' + i + '" data-presta-idx="' + idx + '" title="' + (dispo ? "" : "Pas un jour de ménage prévu pour ce local") + '">' + lbl + "</div>";
         }).join("") + "</div>";
+        var estCatalogue = PRESTATIONS_CATALOGUE.indexOf(p.nom) !== -1;
+        var estAutre = p.nom && !estCatalogue;
+        var options = '<option value="">Choisir une prestation</option>' +
+          PRESTATIONS_CATALOGUE.map(function (nomOption) { return '<option value="' + escAttr(nomOption) + '"' + (p.nom === nomOption ? " selected" : "") + '>' + escHtml(nomOption) + "</option>"; }).join("") +
+          '<option value="__autre__"' + (estAutre ? " selected" : "") + '>Autre…</option>';
         return '<div class="presta-ligne" data-presta-ligne="' + idx + '">' +
           '<div class="presta-ligne-top">' +
-          '<input type="text" data-presta-nom data-presta-idx="' + idx + '" value="' + escAttr(p.nom) + '" placeholder="Ex : vitrerie" />' +
+          '<select data-presta-select data-presta-idx="' + idx + '">' + options + '</select>' +
           '<input type="number" min="0" step="5" data-presta-duree data-presta-idx="' + idx + '" value="' + (p.dureeMinutes != null ? p.dureeMinutes : "") + '" placeholder="Min." />' +
           '<button type="button" data-presta-suppr data-presta-idx="' + idx + '" title="Retirer">×</button>' +
-          "</div>" + jours + "</div>";
+          "</div>" +
+          '<input type="text" data-presta-nom-perso data-presta-idx="' + idx + '" value="' + escAttr(estAutre ? p.nom : "") + '" placeholder="Nom de la prestation" style="display:' + (estAutre ? "block" : "none") + ';margin-bottom:8px" />' +
+          jours + "</div>";
       }).join("") || '<div class="presta-hint">Aucune pour l\'instant.</div>';
 
-      Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-nom]"), function (el) {
-        el.addEventListener("change", function () { brouillon.prestations[Number(el.getAttribute("data-presta-idx"))].nom = el.value; });
+      Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-select]"), function (el) {
+        el.addEventListener("change", function () {
+          var idx = Number(el.getAttribute("data-presta-idx"));
+          var champPerso = conteneur.querySelector('[data-presta-nom-perso][data-presta-idx="' + idx + '"]');
+          if (el.value === "__autre__") {
+            champPerso.style.display = "block";
+            brouillon.prestations[idx].nom = champPerso.value;
+            champPerso.focus();
+          } else {
+            champPerso.style.display = "none";
+            brouillon.prestations[idx].nom = el.value;
+          }
+        });
+      });
+      Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-nom-perso]"), function (el) {
+        el.addEventListener("input", function () { brouillon.prestations[Number(el.getAttribute("data-presta-idx"))].nom = el.value; });
       });
       Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-duree]"), function (el) {
         el.addEventListener("change", function () { brouillon.prestations[Number(el.getAttribute("data-presta-idx"))].dureeMinutes = Number(el.value) || 0; });
