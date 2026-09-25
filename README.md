@@ -12,7 +12,11 @@ Trois écrans, accessibles par les onglets en haut :
 
 - **Cette semaine** : l'écran d'accueil. Un agenda de la semaine en cours,
   aujourd'hui mis en avant, avec la liste des locaux à nettoyer chaque jour
-  et une case à cocher. C'est l'écran à ouvrir chaque matin.
+  et une case à cocher. C'est l'écran à ouvrir chaque matin. Un passage
+  prévu et jamais fait, plus de 30 jours en arrière, apparaît en rouge et
+  compte dans un bandeau de retard en haut de l'écran, cliquable pour
+  aller directement au plus ancien. Chaque passage peut aussi recevoir une
+  petite remarque libre (par exemple porte fermée, agent absent).
 - **Le mois** : un calendrier classique du mois, une pastille par jour
   (vert = tout est fait, rouge = un jour passé incomplet, gris = encore à
   venir). Cliquer sur un jour ouvre sa semaine dans l'écran précédent pour

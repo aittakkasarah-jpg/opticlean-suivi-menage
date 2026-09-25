@@ -127,6 +127,19 @@ input[type=file] { display: none; }
 .ajout-jour { padding: 8px 10px 12px; }
 .ajout-jour select { width: 100%; }
 
+.entree.manque { background: var(--warn-bg); }
+.entree.manque:hover { background: #fbe0dd; }
+.entree.manque .entree-check { border-color: var(--warn); }
+.entree.manque .entree-nom { color: var(--warn); }
+.entree-remarque { font-size: 11px; color: var(--gray); margin-top: 1px; font-style: italic; }
+
+.bandeau-retard {
+  background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 11px 16px;
+  margin-bottom: 18px; font-weight: 600; font-size: 12.5px; cursor: pointer; border: none;
+  width: 100%; text-align: left; font-family: 'Inter', sans-serif;
+}
+.bandeau-retard:hover { opacity: 0.85; }
+
 /* VUE MOIS : calendrier */
 .mois-entetes { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
 .mois-entetes div { text-align: center; font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--gray); letter-spacing: 0.4px; }
@@ -147,7 +160,17 @@ input[type=file] { display: none; }
 .mois-legende span { display: inline-flex; align-items: center; gap: 6px; }
 .mois-legende i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 
-/* VUE LOCAUX : cartes */
+/* VUE LOCAUX : récapitulatif + cartes */
+.table-wrap { background: var(--white); border-radius: 10px; overflow: auto; box-shadow: 0 2px 12px rgba(31,59,68,0.05); margin-bottom: 20px; }
+.recap-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 420px; }
+.recap-table thead tr { background: var(--dark); color: var(--white); }
+.recap-table thead th { padding: 9px 14px; text-align: right; font-size: 11px; font-weight: 600; }
+.recap-table thead th:first-child { text-align: left; }
+.recap-table tbody td { padding: 8px 14px; text-align: right; border-bottom: 1px solid var(--border); }
+.recap-table tbody td:first-child { text-align: left; font-weight: 600; }
+.recap-table tbody tr:nth-child(even) { background: #faf9f7; }
+.recap-table .ligne-total td { font-weight: 700; border-top: 2px solid var(--dark); background: var(--bg); }
+
 .locaux-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
 .local-carte { background: var(--white); border-radius: 10px; padding: 16px 18px; box-shadow: 0 2px 12px rgba(31,59,68,0.05); }
 .local-carte-entete { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
@@ -230,9 +253,11 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   body { background: white; }
   .contenu { padding: 0; max-width: 100%; }
   .periode-nav button.rond, .lien-aujourdhui, .entree-suppr, .ajout-jour,
-  .btn-add-sup, .supplement-ligne button, [data-edit-local] { display: none !important; }
+  .btn-add-sup, .supplement-ligne button, [data-edit-local], .bandeau-retard { display: none !important; }
   .jour-bloc, .local-carte { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
   .local-carte-nom { cursor: default; text-decoration: none; }
+  .table-wrap { box-shadow: none; break-inside: avoid; }
+  .recap-table { min-width: 0; }
 }
 </style>
 </head>
@@ -573,7 +598,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   function ensurePassage(localId, dateISO) {
     var m = getMoisData(moisDeISO(dateISO));
     if (!m.passages[localId]) m.passages[localId] = {};
-    if (!m.passages[localId][dateISO]) m.passages[localId][dateISO] = { fait: false, heureDebut: "", heureFin: "" };
+    if (!m.passages[localId][dateISO]) m.passages[localId][dateISO] = { fait: false, heureDebut: "", heureFin: "", remarque: "" };
     return m.passages[localId][dateISO];
   }
 
@@ -653,7 +678,13 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       libelle = "Semaine du " + premier.getDate() + " " + NOMS_MOIS_COURT[premier.getMonth()] + " au " + dernier.getDate() + " " + NOMS_MOIS_COURT[dernier.getMonth()];
     }
 
-    var html = '<div class="periode-nav">' +
+    var html = "";
+    var retards = passagesEnRetard();
+    if (retards.length) {
+      html += '<button class="bandeau-retard" id="btnVoirRetards">' + retards.length + (retards.length > 1 ? " passages en retard, jamais cochés fait. Cliquer pour voir le plus ancien." : " passage en retard, jamais coché fait. Cliquer pour le voir.") + "</button>";
+    }
+
+    html += '<div class="periode-nav">' +
       '<button class="rond" id="semainePrev" title="Semaine précédente">‹</button>' +
       '<div><div class="periode-label">' + libelle + '</div>' + (etat.semaineCourante !== lundiDeLaSemaineISO(aujourdhui) ? '<div style="text-align:center"><button class="lien-aujourdhui" id="btnAujourdhui">revenir à aujourd\'hui</button></div>' : '') + '</div>' +
       '<button class="rond" id="semaineNext" title="Semaine suivante">›</button>' +
@@ -674,11 +705,14 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       } else {
         entrees.forEach(function (e) {
           var fait = !!(e.passage && e.passage.fait);
+          var enRetard = !fait && iso < aujourdhui;
           var heures = (e.passage && e.passage.heureDebut && e.passage.heureFin) ? (e.passage.heureDebut + " à " + e.passage.heureFin) : "";
-          html += '<div class="entree' + (fait ? " fait" : "") + '" data-entree data-local="' + e.local.id + '" data-date="' + iso + '">';
+          var remarque = e.passage && e.passage.remarque;
+          html += '<div class="entree' + (fait ? " fait" : "") + (enRetard ? " manque" : "") + '" data-entree data-local="' + e.local.id + '" data-date="' + iso + '">';
           html += '<div class="entree-check" data-check>' + (fait ? "✓" : "") + '</div>';
           html += '<div class="entree-corps"><div class="entree-nom">' + escHtml(e.local.nom) + (e.manuel ? '<span class="entree-manuelle-tag">ajouté</span>' : '') + '</div>';
           if (heures) html += '<div class="entree-heures">' + heures + '</div>';
+          if (remarque) html += '<div class="entree-remarque">Remarque : ' + escHtml(remarque) + '</div>';
           html += '</div>';
           if (e.manuel) html += '<button class="entree-suppr" data-suppr-entree title="Retirer">×</button>';
           html += '</div>';
@@ -714,7 +748,29 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     return out;
   }
 
+  // Passages prévus (ou ajoutés) dans les 30 derniers jours, toujours pas faits.
+  // 30 jours : assez pour couvrir tous les rythmes de passage, sans scanner tout l'historique.
+  var NB_JOURS_RETARD = 30;
+  function passagesEnRetard() {
+    var aujourdhui = aujourdHuiISO();
+    var out = [];
+    for (var i = NB_JOURS_RETARD; i >= 1; i--) {
+      var iso = ajouterJoursISO(aujourdhui, -i);
+      entreesDuJour(iso).forEach(function (e) {
+        if (!(e.passage && e.passage.fait)) out.push({ local: e.local, date: iso });
+      });
+    }
+    return out;
+  }
+
   function attacherEvenementsSemaine() {
+    var btnRetards = document.getElementById("btnVoirRetards");
+    if (btnRetards) btnRetards.addEventListener("click", function () {
+      var retards = passagesEnRetard();
+      if (!retards.length) return;
+      etat.semaineCourante = lundiDeLaSemaineISO(retards[0].date);
+      render();
+    });
     document.getElementById("semainePrev").addEventListener("click", function () {
       etat.semaineCourante = ajouterJoursISO(etat.semaineCourante, -7); render();
     });
@@ -770,7 +826,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   function ouvrirPopoverPassage(ancre, localId, iso) {
     fermerPopover();
     var local = etat.data.locaux.find(function (l) { return l.id === localId; });
-    var passage = getPassage(localId, iso) || { fait: false, heureDebut: "", heureFin: "" };
+    var passage = getPassage(localId, iso) || { fait: false, heureDebut: "", heureFin: "", remarque: "" };
 
     var rect = ancre.getBoundingClientRect();
     var pop = document.createElement("div");
@@ -785,6 +841,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       '<div><label>Heure de début</label><input type="time" id="popDebut" value="' + (passage.heureDebut || "") + '" /></div>' +
       '<div><label>Heure de fin</label><input type="time" id="popFin" value="' + (passage.heureFin || "") + '" /></div>' +
       "</div>" +
+      '<div style="margin-top:10px"><label>Remarque</label><input type="text" id="popRemarque" value="' + escAttr(passage.remarque || "") + '" placeholder="Ex : porte fermée" /></div>' +
       '<div class="popover-actions">' +
       '<button class="btn btn-outline" id="popFermer">Fermer</button>' +
       '<button class="btn btn-accent" id="popEnregistrer">Enregistrer</button>' +
@@ -806,6 +863,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       p.fait = pop.querySelector("#popFait").checked;
       p.heureDebut = champDebut.value || "";
       p.heureFin = champFin.value || "";
+      p.remarque = pop.querySelector("#popRemarque").value || "";
       persister();
       fermerPopover();
       render();
@@ -906,21 +964,11 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   }
 
   /* ================= VUE LOCAUX (comptabilité mensuelle) ================= */
-  function renderVueLocaux() {
+  function calculerStatsLocaux() {
     var d = decomposerMoisISO(etat.moisAffiche);
     var moisData = getMoisData(etat.moisAffiche);
 
-    var html = '<div class="periode-nav">' +
-      '<button class="rond" id="moisPrev" title="Mois précédent">‹</button>' +
-      '<div class="periode-label">' + NOMS_MOIS[d.moisIndex] + " " + d.annee + '</div>' +
-      '<button class="rond" id="moisNext" title="Mois suivant">›</button>' +
-      "</div>";
-
-    html += '<div style="text-align:right;margin-bottom:14px"><button class="btn btn-accent btn-petit" id="btnNouveauLocal">+ Nouveau local</button></div>';
-
-    html += '<div class="locaux-grid">';
-    var total = 0;
-    etat.data.locaux.forEach(function (local) {
+    return etat.data.locaux.map(function (local) {
       var nbPrevu = nombrePassagesPrevusMois(local, d.annee, d.moisIndex);
       var passagesLocal = (moisData.passages[local.id] || {});
       var nbFait = 0, dureeReelleMin = 0;
@@ -937,22 +985,49 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       var lignesSup = moisData.supplements[local.id] || [];
       var totalSup = lignesSup.reduce(function (s, x) { return s + (Number(x.montant) || 0); }, 0);
       var totalLocal = forfait + totalSup;
-      total += totalLocal;
-      var conforme = nbFait >= nbPrevu;
+      return {
+        local: local, nbPrevu: nbPrevu, nbFait: nbFait, dureeReelleMin: dureeReelleMin, dureePrevueMin: dureePrevueMin,
+        forfait: forfait, lignesSup: lignesSup, totalSup: totalSup, totalLocal: totalLocal, conforme: nbFait >= nbPrevu
+      };
+    });
+  }
 
+  function renderVueLocaux() {
+    var d = decomposerMoisISO(etat.moisAffiche);
+    var stats = calculerStatsLocaux();
+    var total = stats.reduce(function (s, x) { return s + x.totalLocal; }, 0);
+
+    var html = '<div class="periode-nav">' +
+      '<button class="rond" id="moisPrev" title="Mois précédent">‹</button>' +
+      '<div class="periode-label">' + NOMS_MOIS[d.moisIndex] + " " + d.annee + '</div>' +
+      '<button class="rond" id="moisNext" title="Mois suivant">›</button>' +
+      "</div>";
+
+    html += '<div style="text-align:right;margin-bottom:14px"><button class="btn btn-accent btn-petit" id="btnNouveauLocal">+ Nouveau local</button></div>';
+
+    html += '<div class="table-wrap"><table class="recap-table"><thead><tr><th>Local</th><th>Forfait</th><th>Suppléments</th><th>Total</th></tr></thead><tbody>';
+    stats.forEach(function (s) {
+      html += "<tr><td>" + escHtml(s.local.nom) + "</td><td>" + formatMontant(s.forfait) + "</td><td>" + (s.totalSup ? formatMontant(s.totalSup) : "0,00 €") + "</td><td>" + formatMontant(s.totalLocal) + "</td></tr>";
+    });
+    html += '<tr class="ligne-total"><td>Total</td><td></td><td></td><td>' + formatMontant(total) + "</td></tr>";
+    html += "</tbody></table></div>";
+
+    html += '<div class="locaux-grid">';
+    stats.forEach(function (s) {
+      var local = s.local;
       html += '<div class="local-carte">';
       html += '<div class="local-carte-entete"><div><div class="local-carte-nom" data-edit-local="' + local.id + '">' + escHtml(local.nom) + '</div>';
       html += '<div class="local-carte-meta">' + local.surface + " m² · " + LABEL_ENGAGEMENT[local.engagement] + " · " + rythmeParId(local.rythme).label + '</div></div>';
-      html += '<span class="badge-conformite ' + (conforme ? "badge-ok" : "badge-ko") + '">' + nbFait + " / " + nbPrevu + '</span></div>';
+      html += '<span class="badge-conformite ' + (s.conforme ? "badge-ok" : "badge-ko") + '">' + s.nbFait + " / " + s.nbPrevu + '</span></div>';
       html += '<div class="local-carte-stats">';
-      html += '<div class="stat-puce">Durée faite<b>' + (formatDuree(dureeReelleMin) || "0 h") + '</b></div>';
-      html += '<div class="stat-puce">Durée prévue<b>' + formatDuree(dureePrevueMin) + '</b></div>';
+      html += '<div class="stat-puce">Durée faite<b>' + (formatDuree(s.dureeReelleMin) || "0 h") + '</b></div>';
+      html += '<div class="stat-puce">Durée prévue<b>' + formatDuree(s.dureePrevueMin) + '</b></div>';
       html += '</div>';
 
-      html += '<hr><div class="local-carte-total"><span>Forfait</span><span>' + formatMontant(forfait) + '</span></div>';
+      html += '<hr><div class="local-carte-total"><span>Forfait</span><span>' + formatMontant(s.forfait) + '</span></div>';
 
       html += '<div style="margin-top:10px" data-sup-local="' + local.id + '">';
-      lignesSup.forEach(function (ligne, idx) {
+      s.lignesSup.forEach(function (ligne, idx) {
         html += '<div class="supplement-ligne">' +
           '<input type="text" data-sup-nom data-idx="' + idx + '" value="' + escAttr(ligne.nom) + '" placeholder="Ex : vitres" />' +
           '<input type="number" step="0.01" data-sup-montant data-idx="' + idx + '" value="' + (ligne.montant != null ? ligne.montant : "") + '" placeholder="€" />' +
@@ -961,7 +1036,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       });
       html += '<button class="btn-add-sup" data-sup-ajouter>+ Ajouter un supplément</button></div>';
 
-      html += '<hr><div class="local-carte-total"><span>Total du mois</span><span>' + formatMontant(totalLocal) + '</span></div>';
+      html += '<hr><div class="local-carte-total"><span>Total du mois</span><span>' + formatMontant(s.totalLocal) + '</span></div>';
       html += "</div>";
     });
     html += "</div>";
