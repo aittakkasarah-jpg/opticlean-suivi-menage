@@ -49,7 +49,14 @@ Autres points :
   jours réellement faits, avec heure de début et de fin), pas à calculer
   le prix : le forfait reste fixe.
 - Les suppléments (vitres, intervention ponctuelle...) se saisissent
-  librement, local par local, mois par mois, dans l'onglet Mes locaux.
+  librement, local par local, mois par mois, dans l'onglet Mes locaux. Ce
+  sont des montants, saisis après coup pour la facturation.
+- Un local peut aussi avoir des **prestations complémentaires** (par
+  exemple vitrerie ou consommables sanitaires), réglées dans sa fiche :
+  un nom, une durée, et sur lequel des jours déjà prévus pour ce local
+  elle s'ajoute. Contrairement aux suppléments, ce sont des minutes, pas
+  des euros : elles s'ajoutent à la durée du ménage ce jour-là (visible
+  dans l'agenda et dans l'heure de fin suggérée), sans changer le forfait.
 
 ## Hors périmètre (délibérément, voir le cahier des charges)
 

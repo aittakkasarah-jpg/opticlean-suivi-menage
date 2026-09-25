@@ -227,6 +227,18 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
 .override-row input[type=checkbox] { width: auto; }
 .modale-actions { display: flex; justify-content: space-between; margin-top: 20px; gap: 10px; }
 
+.presta-ligne { background: var(--bg); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.presta-ligne-top { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; }
+.presta-ligne-top input[type=text] { flex: 1.6; }
+.presta-ligne-top input[type=number] { width: 90px; }
+.presta-ligne-top button { background: none; border: none; color: var(--gray); cursor: pointer; font-size: 15px; flex-shrink: 0; }
+.presta-ligne-top button:hover { color: var(--warn); }
+.presta-jours { display: flex; gap: 4px; flex-wrap: wrap; }
+.presta-jours .jour-toggle { padding: 4px 8px; font-size: 10.5px; }
+.presta-jours .jour-toggle.indisponible { opacity: 0.35; cursor: not-allowed; }
+.presta-hint { font-size: 10px; color: var(--gray); margin-top: 6px; }
+.entree-extra { font-size: 11px; color: var(--accent-dark); margin-top: 1px; }
+
 .popover { position: absolute; background: var(--white); border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.2); padding: 16px; z-index: 600; width: 230px; }
 .popover label { margin-top: 8px; }
 .popover .champ-row { gap: 8px; }
@@ -316,6 +328,23 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     surface = Number(surface) || 0;
     var n = Math.ceil(surface / 75) || 1;
     return 0.5 * n + 0.5;
+  }
+
+  // Prestations complémentaires (vitrerie, consommables...) : ne comptent que sur
+  // un jour où le ménage de base est déjà prévu pour ce local, elles s'ajoutent à
+  // sa durée ce jour-là, elles ne créent pas un passage à part.
+  function prestationsDuJour(local, dateISO) {
+    if (!localPrevuCeJour(local, dateISO)) return [];
+    var wd = jourSemaineLundi0DeDate(isoVersDate(dateISO));
+    return (local.prestations || []).filter(function (p) { return (p.jours || []).indexOf(wd) !== -1; });
+  }
+
+  function dureeExtraMinutes(local, dateISO) {
+    return prestationsDuJour(local, dateISO).reduce(function (s, p) { return s + (Number(p.dureeMinutes) || 0); }, 0);
+  }
+
+  function dureePrevuePassageMinutes(local, dateISO) {
+    return tempsEstimeHeures(local.surface) * 60 + dureeExtraMinutes(local, dateISO);
   }
 
   function passagesParMoisMoyen(rythmeId) {
@@ -625,11 +654,6 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     return joursOuverts;
   }
 
-  function nombrePassagesPrevusMois(local, annee, moisIndex) {
-    if (local.rythme === "2mois") return 2;
-    return joursPrevusDuMois(local, annee, moisIndex).length;
-  }
-
   /* ---------- État ---------- */
   var etat = {
     data: chargerDepuisNavigateur(),
@@ -708,10 +732,12 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
           var enRetard = !fait && iso < aujourdhui;
           var heures = (e.passage && e.passage.heureDebut && e.passage.heureFin) ? (e.passage.heureDebut + " à " + e.passage.heureFin) : "";
           var remarque = e.passage && e.passage.remarque;
+          var extras = prestationsDuJour(e.local, iso);
           html += '<div class="entree' + (fait ? " fait" : "") + (enRetard ? " manque" : "") + '" data-entree data-local="' + e.local.id + '" data-date="' + iso + '">';
           html += '<div class="entree-check" data-check>' + (fait ? "✓" : "") + '</div>';
           html += '<div class="entree-corps"><div class="entree-nom">' + escHtml(e.local.nom) + (e.manuel ? '<span class="entree-manuelle-tag">ajouté</span>' : '') + '</div>';
           if (heures) html += '<div class="entree-heures">' + heures + '</div>';
+          if (extras.length) html += '<div class="entree-extra">+ ' + extras.map(function (p) { return escHtml(p.nom || "prestation") + " (" + formatDuree(Number(p.dureeMinutes) || 0) + ")"; }).join(", ") + '</div>';
           if (remarque) html += '<div class="entree-remarque">Remarque : ' + escHtml(remarque) + '</div>';
           html += '</div>';
           if (e.manuel) html += '<button class="entree-suppr" data-suppr-entree title="Retirer">×</button>';
@@ -817,7 +843,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     if (p.fait && !p.heureDebut) {
       var local = etat.data.locaux.find(function (l) { return l.id === localId; });
       p.heureDebut = "09:00";
-      p.heureFin = ajouterMinutes("09:00", Math.round(tempsEstimeHeures(local.surface) * 60));
+      p.heureFin = ajouterMinutes("09:00", Math.round(dureePrevuePassageMinutes(local, dateISO)));
     }
     persister(); render();
   }
@@ -852,7 +878,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     var champFin = pop.querySelector("#popFin");
     champDebut.addEventListener("change", function () {
       if (champDebut.value && !champFin.value && local) {
-        var minutes = Math.round(tempsEstimeHeures(local.surface) * 60);
+        var minutes = Math.round(dureePrevuePassageMinutes(local, iso));
         champFin.value = ajouterMinutes(champDebut.value, minutes);
       }
     });
@@ -969,7 +995,8 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     var moisData = getMoisData(etat.moisAffiche);
 
     return etat.data.locaux.map(function (local) {
-      var nbPrevu = nombrePassagesPrevusMois(local, d.annee, d.moisIndex);
+      var joursPrevusArr = joursPrevusDuMois(local, d.annee, d.moisIndex);
+      var nbPrevu = local.rythme === "2mois" ? 2 : joursPrevusArr.length;
       var passagesLocal = (moisData.passages[local.id] || {});
       var nbFait = 0, dureeReelleMin = 0;
       Object.keys(passagesLocal).forEach(function (iso) {
@@ -980,7 +1007,15 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
           if (p.heureDebut && p.heureFin) dureeReelleMin += Math.max(0, heureVersMinutes(p.heureFin) - heureVersMinutes(p.heureDebut));
         }
       });
-      var dureePrevueMin = tempsEstimeHeures(local.surface) * 60 * nbPrevu;
+      var dureePrevueMin;
+      if (local.rythme === "2mois") {
+        dureePrevueMin = tempsEstimeHeures(local.surface) * 60 * 2;
+      } else {
+        dureePrevueMin = joursPrevusArr.reduce(function (s, j) {
+          var iso = d.annee + "-" + pad2(d.moisIndex + 1) + "-" + pad2(j);
+          return s + dureePrevuePassageMinutes(local, iso);
+        }, 0);
+      }
       var forfait = forfaitEffectif(local);
       var lignesSup = moisData.supplements[local.id] || [];
       var totalSup = lignesSup.reduce(function (s, x) { return s + (Number(x.montant) || 0); }, 0);
@@ -1093,9 +1128,12 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   /* ---------- Modale local (création / édition) ---------- */
   function ouvrirModaleLocal(localId) {
     var local = localId ? etat.data.locaux.find(function (l) { return l.id === localId; }) : null;
-    var brouillon = local ? Object.assign({}, local, { joursPrevus: (local.joursPrevus || []).slice() }) : {
+    var brouillon = local ? Object.assign({}, local, {
+      joursPrevus: (local.joursPrevus || []).slice(),
+      prestations: (local.prestations || []).map(function (p) { return Object.assign({}, p, { jours: (p.jours || []).slice() }); })
+    }) : {
       id: null, nom: "", surface: 100, engagement: "12", rythme: "1sem", joursPrevus: [0],
-      forfaitOverride: null
+      forfaitOverride: null, prestations: []
     };
 
     var overlay = document.createElement("div");
@@ -1119,6 +1157,11 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       '<div class="champ" id="blocJours"><label>Jours de passage prévus</label><div class="jours-semaine">' +
       JOURS_LABEL.map(function (lbl, i) { return '<div class="jour-toggle" data-jour-toggle="' + i + '">' + lbl + "</div>"; }).join("") +
       "</div></div>" +
+      '<div class="champ" id="blocPrestations"><label>Prestations complémentaires</label>' +
+      '<div id="listePrestations"></div>' +
+      '<button type="button" class="btn-add-sup" id="btnAjouterPresta">+ Ajouter une prestation</button>' +
+      '<div class="presta-hint">Ex : vitrerie, consommables sanitaires. La durée s\'ajoute à celle du ménage le jour choisi, et s\'affiche sur l\'agenda.</div>' +
+      "</div>" +
       '<div class="forfait-preview" id="apercuForfait"></div>' +
       '<div class="override-row"><input type="checkbox" id="champOverrideActif" ' + (brouillon.forfaitOverride !== null && brouillon.forfaitOverride !== undefined ? "checked" : "") + '> Remplacer par un montant négocié à la main</div>' +
       '<div class="champ" id="blocOverride" style="display:none;margin-top:8px"><input type="number" step="0.01" id="champOverride" value="' + (brouillon.forfaitOverride || "") + '" placeholder="Montant en €" /></div>' +
@@ -1134,8 +1177,53 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
         var i = Number(el.getAttribute("data-jour-toggle"));
         el.classList.toggle("actif", brouillon.joursPrevus.indexOf(i) !== -1);
       });
-      overlay.querySelector("#blocJours").style.display = (overlay.querySelector("#champRythme").value === "2mois") ? "none" : "";
+      var pasDeJours = overlay.querySelector("#champRythme").value === "2mois";
+      overlay.querySelector("#blocJours").style.display = pasDeJours ? "none" : "";
+      overlay.querySelector("#blocPrestations").style.display = pasDeJours ? "none" : "";
+      renderPrestations();
     }
+
+    function renderPrestations() {
+      var conteneur = overlay.querySelector("#listePrestations");
+      conteneur.innerHTML = brouillon.prestations.map(function (p, idx) {
+        var jours = '<div class="presta-jours">' + JOURS_LABEL.map(function (lbl, i) {
+          var dispo = brouillon.joursPrevus.indexOf(i) !== -1;
+          var actif = dispo && p.jours.indexOf(i) !== -1;
+          return '<div class="jour-toggle' + (actif ? " actif" : "") + (dispo ? "" : " indisponible") + '" data-presta-jour="' + i + '" data-presta-idx="' + idx + '" title="' + (dispo ? "" : "Pas un jour de ménage prévu pour ce local") + '">' + lbl + "</div>";
+        }).join("") + "</div>";
+        return '<div class="presta-ligne" data-presta-ligne="' + idx + '">' +
+          '<div class="presta-ligne-top">' +
+          '<input type="text" data-presta-nom data-presta-idx="' + idx + '" value="' + escAttr(p.nom) + '" placeholder="Ex : vitrerie" />' +
+          '<input type="number" min="0" step="5" data-presta-duree data-presta-idx="' + idx + '" value="' + (p.dureeMinutes != null ? p.dureeMinutes : "") + '" placeholder="Min." />' +
+          '<button type="button" data-presta-suppr data-presta-idx="' + idx + '" title="Retirer">×</button>' +
+          "</div>" + jours + "</div>";
+      }).join("") || '<div class="presta-hint">Aucune pour l\'instant.</div>';
+
+      Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-nom]"), function (el) {
+        el.addEventListener("change", function () { brouillon.prestations[Number(el.getAttribute("data-presta-idx"))].nom = el.value; });
+      });
+      Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-duree]"), function (el) {
+        el.addEventListener("change", function () { brouillon.prestations[Number(el.getAttribute("data-presta-idx"))].dureeMinutes = Number(el.value) || 0; });
+      });
+      Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-suppr]"), function (el) {
+        el.addEventListener("click", function () {
+          brouillon.prestations.splice(Number(el.getAttribute("data-presta-idx")), 1);
+          renderPrestations();
+        });
+      });
+      Array.prototype.forEach.call(conteneur.querySelectorAll("[data-presta-jour]"), function (el) {
+        el.addEventListener("click", function () {
+          var idx = Number(el.getAttribute("data-presta-idx"));
+          var jour = Number(el.getAttribute("data-presta-jour"));
+          if (brouillon.joursPrevus.indexOf(jour) === -1) return; // jour indisponible pour ce local
+          var p = brouillon.prestations[idx];
+          var pos = p.jours.indexOf(jour);
+          if (pos === -1) p.jours.push(jour); else p.jours.splice(pos, 1);
+          renderPrestations();
+        });
+      });
+    }
+
     function majApercu() {
       var f = forfaitCalcule(brouillon);
       var temps = tempsEstimeHeures(brouillon.surface);
@@ -1165,6 +1253,10 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       majApercu();
     });
     overlay.querySelector("#champOverride").addEventListener("input", majApercu);
+    overlay.querySelector("#btnAjouterPresta").addEventListener("click", function () {
+      brouillon.prestations.push({ id: idUnique(), nom: "", dureeMinutes: 30, jours: [] });
+      renderPrestations();
+    });
 
     overlay.querySelector("#btnAnnulerLocal").onclick = function () { overlay.remove(); };
     overlay.addEventListener("mousedown", function (e) { if (e.target === overlay) overlay.remove(); });
