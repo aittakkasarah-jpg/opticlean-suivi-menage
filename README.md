@@ -23,11 +23,19 @@ Trois écrans, accessibles par les onglets en haut :
 
 Autres points :
 
-- **Un seul utilisateur, sur un seul ordinateur.** Les données restent dans le
-  navigateur (stockage local). Cliquer régulièrement sur **Sauvegarder** pour
-  télécharger un fichier de secours, et sur **Charger** pour le remettre.
-  Si le navigateur est vidé sans sauvegarde, les données de cette page sont
-  perdues : c'est le compromis d'un outil sans base de données.
+- **Les données sont en ligne, partagées entre tous les appareils.** Ouvrir
+  le site depuis n'importe quel ordinateur ou téléphone affiche les mêmes
+  informations, toujours à jour, sans rien sauvegarder ni charger. Le petit
+  indicateur en haut à droite de l'écran (« Synchronisé », « Enregistrement… »
+  ou « Hors ligne ») donne l'état de cette synchronisation. Techniquement :
+  même mécanisme que la stratégie de contenu Opti'Clean (Supabase, table
+  `strategies`, ligne `opticlean-suivi-menage`), voir `.claude/skills/strategie-contenu/SKILL.md`
+  du dépôt principal pour le détail du fonctionnement et les points de
+  vigilance (clé publique visible dans le fichier, projet gratuit mis en
+  pause après 7 jours d'inactivité).
+- Le bouton **Télécharger en PDF** imprime proprement l'écran affiché, pour
+  garder une copie lisible. Ce n'est pas une sauvegarde technique : on ne
+  peut pas recharger un PDF dans l'outil.
 - Chaque local a une surface, un type d'engagement (12 mois / 6 mois / sans
   engagement) et un rythme de passage : le forfait mensuel se calcule tout
   seul à partir de la grille tarifaire officielle OptiClean (voir

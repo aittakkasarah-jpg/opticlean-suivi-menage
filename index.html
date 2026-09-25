@@ -61,6 +61,15 @@ body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dar
 .btn-petit { padding: 5px 10px; font-size: 11px; }
 input[type=file] { display: none; }
 
+.sync-badge { display: flex; align-items: center; gap: 7px; color: rgba(255,255,255,0.75); font-size: 11.5px; }
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gray); flex-shrink: 0; }
+.sync-dot.ok { background: var(--accent); animation: pulse 2s infinite; }
+.sync-dot.saving { background: #f0c419; }
+.sync-dot.err { background: var(--warn); }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+.print-entete { display: none; }
+
 /* CONTENU */
 .contenu { padding: 22px 28px 60px; max-width: 860px; margin: 0 auto; }
 
@@ -213,6 +222,18 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
   .mois-badge { font-size: 9px; padding: 1px 5px; }
   .mois-entetes div { font-size: 9px; }
 }
+
+@media print {
+  .toolbar { display: none !important; }
+  #modales { display: none !important; }
+  .print-entete { display: block; font-weight: 700; font-size: 17px; margin-bottom: 16px; }
+  body { background: white; }
+  .contenu { padding: 0; max-width: 100%; }
+  .periode-nav button.rond, .lien-aujourdhui, .entree-suppr, .ajout-jour,
+  .btn-add-sup, .supplement-ligne button, [data-edit-local] { display: none !important; }
+  .jour-bloc, .local-carte { box-shadow: none; border: 1px solid #ccc; break-inside: avoid; }
+  .local-carte-nom { cursor: default; text-decoration: none; }
+}
 </style>
 </head>
 <body>
@@ -225,11 +246,12 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     <button class="onglet" id="ongletLocaux">Mes locaux</button>
   </div>
   <div class="toolbar-actions">
-    <button class="btn btn-ghost" id="btnSauvegarder">Sauvegarder</button>
-    <button class="btn btn-ghost" id="btnCharger">Charger</button>
-    <input type="file" id="inputCharger" accept="application/json" />
+    <div class="sync-badge" id="syncBadge"><span class="sync-dot" id="syncDot"></span><span id="syncText">Connexion…</span></div>
+    <button class="btn btn-ghost btn-petit" id="btnPdf">Télécharger en PDF</button>
   </div>
 </div>
+
+<div class="print-entete">OptiClean · Suivi ménage</div>
 
 <div class="contenu" id="contenu">
   <!-- rempli en JavaScript -->
@@ -320,6 +342,105 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     }
   }
 
+  /* ---------- Synchronisation en ligne (mêmes données partout) ---------- */
+  var SYNC = {
+    url: "https://mtpvkrcseolrbaijgcbw.supabase.co",
+    key: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10cHZrcmNzZW9scmJhaWpnY2J3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY4MDEwODQsImV4cCI6MjEwMjM3NzA4NH0.oCnpanzbElS0Cqhr2E_qnpT8cXnOE2XXbELpyGjIwLU",
+    table: "strategies",
+    slug: "opticlean-suivi-menage"
+  };
+  var SYNC_ON = true;
+  var remoteStamp = null;
+  var pushTimer = null;
+  var pulling = false;
+
+  function sbHeaders(extra) {
+    return Object.assign({ apikey: SYNC.key, Authorization: "Bearer " + SYNC.key }, extra || {});
+  }
+
+  function sbRead() {
+    var u = SYNC.url + "/rest/v1/" + SYNC.table + "?slug=eq." + encodeURIComponent(SYNC.slug) + "&select=data,updated_at";
+    return fetch(u, { headers: sbHeaders() }).then(function (r) {
+      if (!r.ok) throw new Error("lecture " + r.status);
+      return r.json();
+    }).then(function (rows) { return rows[0] || null; });
+  }
+
+  function sbWrite() {
+    var u = SYNC.url + "/rest/v1/" + SYNC.table + "?slug=eq." + encodeURIComponent(SYNC.slug);
+    var body = JSON.stringify({ data: etat.data, updated_at: new Date().toISOString() });
+    return fetch(u, { method: "PATCH", headers: sbHeaders({ "Content-Type": "application/json", Prefer: "return=representation" }), body: body })
+      .then(function (r) {
+        if (!r.ok) throw new Error("écriture " + r.status);
+        return r.json();
+      }).then(function (rows) { if (rows[0]) remoteStamp = rows[0].updated_at; });
+  }
+
+  function setSyncBadge(classe, texte) {
+    var dot = document.getElementById("syncDot");
+    var txt = document.getElementById("syncText");
+    if (!dot || !txt) return;
+    dot.className = "sync-dot" + (classe ? " " + classe : "");
+    txt.textContent = texte;
+  }
+
+  function saisieEnCours() {
+    return !!(document.querySelector(".overlay") || document.querySelector(".popover"));
+  }
+
+  function schedulePush() {
+    if (!SYNC_ON) return;
+    setSyncBadge("saving", "Enregistrement…");
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(function () {
+      pushTimer = null;
+      sbWrite().then(function () { setSyncBadge("ok", "Synchronisé"); })
+        .catch(function () { setSyncBadge("err", "Hors ligne (gardé sur cet appareil)"); });
+    }, 1200);
+  }
+
+  function pull() {
+    if (!SYNC_ON || pulling || pushTimer || saisieEnCours()) return;
+    pulling = true;
+    sbRead().then(function (row) {
+      pulling = false;
+      if (row && row.updated_at !== remoteStamp) {
+        remoteStamp = row.updated_at;
+        etat.data = Object.assign(donneesParDefaut(), row.data || {});
+        sauvegarderDansNavigateur();
+        render();
+        setSyncBadge("ok", "Synchronisé");
+      }
+    }).catch(function () { pulling = false; setSyncBadge("err", "Hors ligne (gardé sur cet appareil)"); });
+  }
+
+  function initSync() {
+    if (!SYNC_ON) { setSyncBadge("", "Sauvegarde locale uniquement"); return; }
+    setSyncBadge("saving", "Connexion…");
+    sbRead().then(function (row) {
+      if (!row) {
+        // La ligne distante n'existe pas encore : on ne peut pas savoir si elle
+        // sera créée plus tard, donc on ne ment pas avec "Synchronisé".
+        setSyncBadge("err", "Mémoire en ligne introuvable (gardé sur cet appareil)");
+        return;
+      }
+      remoteStamp = row.updated_at;
+      var remoteVide = !row.data || !row.data.locaux || row.data.locaux.length === 0;
+      var suite = Promise.resolve();
+      if (!remoteVide) {
+        etat.data = Object.assign(donneesParDefaut(), row.data);
+        sauvegarderDansNavigateur();
+        render();
+      } else if (etat.data.locaux.length) {
+        suite = sbWrite();
+      }
+      return suite.then(function () {
+        setSyncBadge("ok", "Synchronisé");
+        setInterval(pull, 10000);
+      });
+    }).catch(function () { setSyncBadge("err", "Hors ligne (gardé sur cet appareil)"); });
+  }
+
   function idUnique() {
     return "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   }
@@ -336,6 +457,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
 
   function persister() {
     sauvegarderDansNavigateur();
+    schedulePush();
   }
 
   /* ---------- Aides dates ---------- */
@@ -531,9 +653,7 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
       libelle = "Semaine du " + premier.getDate() + " " + NOMS_MOIS_COURT[premier.getMonth()] + " au " + dernier.getDate() + " " + NOMS_MOIS_COURT[dernier.getMonth()];
     }
 
-    var html = '<div class="avertissement"><strong>Rappel :</strong> les données restent dans ce navigateur, sur cet ordinateur. Pensez à cliquer sur « Sauvegarder » régulièrement pour garder un fichier de secours.</div>';
-
-    html += '<div class="periode-nav">' +
+    var html = '<div class="periode-nav">' +
       '<button class="rond" id="semainePrev" title="Semaine précédente">‹</button>' +
       '<div><div class="periode-label">' + libelle + '</div>' + (etat.semaineCourante !== lundiDeLaSemaineISO(aujourdhui) ? '<div style="text-align:center"><button class="lien-aujourdhui" id="btnAujourdhui">revenir à aujourd\'hui</button></div>' : '') + '</div>' +
       '<button class="rond" id="semaineNext" title="Semaine suivante">›</button>' +
@@ -1006,50 +1126,14 @@ label { display: block; font-size: 10.5px; color: var(--gray); text-transform: u
     };
   }
 
-  /* ---------- Sauvegarde / chargement fichier ---------- */
-  function exporterFichier() {
-    var blob = new Blob([JSON.stringify(etat.data, null, 2)], { type: "application/json" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    var horodatage = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = "opticlean-suivi-menage-" + horodatage + ".json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function importerFichier(file) {
-    var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var parsed = JSON.parse(reader.result);
-        if (!parsed || !Array.isArray(parsed.locaux)) throw new Error("format inattendu");
-        if (!confirm("Charger ce fichier va remplacer les données actuellement affichées dans ce navigateur. Continuer ?")) return;
-        etat.data = parsed;
-        if (!etat.data.mois) etat.data.mois = {};
-        persister();
-        render();
-      } catch (e) {
-        alert("Ce fichier ne peut pas être lu comme une sauvegarde OptiClean valide.");
-      }
-    };
-    reader.readAsText(file);
-  }
-
   /* ---------- Initialisation ---------- */
   document.getElementById("ongletSemaine").addEventListener("click", function () { etat.vue = "semaine"; render(); });
   document.getElementById("ongletMois").addEventListener("click", function () { etat.vue = "mois"; render(); });
   document.getElementById("ongletLocaux").addEventListener("click", function () { etat.vue = "locaux"; render(); });
-  document.getElementById("btnSauvegarder").addEventListener("click", exporterFichier);
-  document.getElementById("btnCharger").addEventListener("click", function () { document.getElementById("inputCharger").click(); });
-  document.getElementById("inputCharger").addEventListener("change", function (e) {
-    if (e.target.files && e.target.files[0]) importerFichier(e.target.files[0]);
-    e.target.value = "";
-  });
+  document.getElementById("btnPdf").addEventListener("click", function () { window.print(); });
 
   render();
+  initSync();
 })();
 </script>
 </body>
