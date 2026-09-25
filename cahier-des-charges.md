@@ -1,6 +1,6 @@
-# Cahier des charges — Suivi ménage OptiClean
+# Cahier des charges · Suivi ménage OptiClean
 
-Dernière mise à jour : 25 septembre 2026. Ce document décrit ce qui est réellement construit aujourd'hui, pas le projet initial : plusieurs choix ont changé en cours de route, ce fichier reflète l'état actuel.
+Dernière mise à jour : 25 septembre 2026 (v2). Ce document décrit ce qui est réellement construit aujourd'hui, pas le projet initial : plusieurs choix ont changé en cours de route, ce fichier reflète l'état actuel.
 
 ## Contexte
 
@@ -17,11 +17,14 @@ Le client a changé d'activité en cours de route : il passait du ménage sur ap
 
 ## Ce que l'outil propose
 
-Trois écrans, accessibles par des onglets :
+Quatre onglets :
 
-1. **Cette semaine** : l'écran d'accueil. Agenda de la semaine en cours, aujourd'hui mis en avant. Pour chaque local prévu ce jour, une case à cocher (fait ou pas fait), avec l'heure de début et de fin du passage (une heure de fin est suggérée automatiquement à partir du temps estimé de la grille, à ajuster si besoin). Un passage exceptionnel, non prévu au contrat, peut être ajouté ponctuellement à n'importe quel jour.
+1. **Cette semaine** : l'écran d'accueil. Agenda de la semaine en cours, aujourd'hui mis en avant. Pour chaque local prévu ce jour, une case à cocher (fait ou pas fait), avec l'heure de début et de fin du passage (une heure de fin est suggérée automatiquement à partir du temps estimé de la grille, plus la durée des éventuelles prestations complémentaires ce jour-là, à ajuster si besoin). Un passage exceptionnel, non prévu au contrat, peut être ajouté ponctuellement à n'importe quel jour, avec une remarque libre. Un bandeau signale, en rouge, les passages prévus des 30 derniers jours jamais cochés faits, et permet d'y aller directement.
 2. **Le mois** : calendrier classique, une pastille de couleur par jour (tout est fait, encore à venir, ou jour passé incomplet). Cliquer sur un jour ouvre sa semaine dans l'écran précédent pour le détail.
-3. **Mes locaux** : la partie comptable, mois par mois. Une fiche par local avec son forfait, son indicateur de conformité (passages prévus contre passages faits), ses suppléments (saisie libre, nom et montant, par exemple vitres ou intervention ponctuelle) et son total. C'est aussi ici qu'on crée, modifie ou supprime un local.
+3. **Comptabilité** : la partie chiffrée, mois par mois. Un tableau récapitulatif de tous les locaux (forfait, suppléments, total), puis une fiche par local avec son indicateur de conformité (passages prévus contre passages faits) et ses suppléments (saisie libre, nom et montant, par exemple vitres ou intervention ponctuelle).
+4. **+ Nouveau local** : un raccourci, pas un écran à part. Ouvre directement la fiche de création d'un local, depuis n'importe quel onglet. La même fiche sert à modifier un local existant (en cliquant sur son nom dans Comptabilité) ou à le supprimer.
+
+Sur la fiche d'un local, en plus de son contrat (surface, engagement, rythme, jours de passage), on peut ajouter des **prestations complémentaires** (par exemple vitrerie grande hauteur ou consommables sanitaires, les deux seules nommées dans les documents OptiClean ; un choix « Autre » permet d'en taper une autre) : un nom, une durée, et sur lequel des jours déjà prévus pour ce local elle s'applique. Contrairement aux suppléments (des montants), ce sont des minutes : elles s'ajoutent à la durée prévue ce jour-là, sans toucher au forfait.
 
 ## Fonctionnement technique
 

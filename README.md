@@ -8,7 +8,7 @@ Ouvrir `index.html` dans un navigateur (Chrome ou Edge).
 
 ## Fonctionnement
 
-Trois écrans, accessibles par les onglets en haut :
+Quatre onglets en haut :
 
 - **Cette semaine** : l'écran d'accueil. Un agenda de la semaine en cours,
   aujourd'hui mis en avant, avec la liste des locaux à nettoyer chaque jour
@@ -21,9 +21,13 @@ Trois écrans, accessibles par les onglets en haut :
   (vert = tout est fait, rouge = un jour passé incomplet, gris = encore à
   venir). Cliquer sur un jour ouvre sa semaine dans l'écran précédent pour
   le détail.
-- **Mes locaux** : la partie comptable, mois par mois. Une carte par local
-  avec son forfait, sa conformité (passages prévus vs faits) et ses
-  suppléments. C'est ici qu'on crée et modifie les locaux.
+- **Comptabilité** : la partie chiffrée, mois par mois. Un tableau
+  récapitulatif de tous les locaux, puis une carte par local avec son
+  forfait, sa conformité (passages prévus vs faits) et ses suppléments.
+- **+ Nouveau local** : n'est pas un écran, un raccourci qui ouvre
+  directement la fiche de création d'un local, depuis n'importe quel
+  onglet. C'est aussi ici (en cliquant sur le nom d'un local existant
+  dans Comptabilité) qu'on modifie sa fiche.
 
 Autres points :
 
@@ -49,7 +53,7 @@ Autres points :
   jours réellement faits, avec heure de début et de fin), pas à calculer
   le prix : le forfait reste fixe.
 - Les suppléments (vitres, intervention ponctuelle...) se saisissent
-  librement, local par local, mois par mois, dans l'onglet Mes locaux. Ce
+  librement, local par local, mois par mois, dans l'onglet Comptabilité. Ce
   sont des montants, saisis après coup pour la facturation.
 - Un local peut aussi avoir des **prestations complémentaires** (par
   exemple vitrerie ou consommables sanitaires), réglées dans sa fiche :
